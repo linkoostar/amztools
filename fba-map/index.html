@@ -357,6 +357,35 @@ function loadSvgMap(site,highlightState){
 function highlightSvg(site,highlightState){
   const svg=document.querySelector('#mapContainer svg');
   if(!svg)return;
+  // 美国地图：移除阿拉斯加和夏威夷，只显示本土48州
+  if(site==='US'){
+    ['USAK','USHI'].forEach(id=>{
+      const el=svg.getElementById(id);
+      if(el)el.remove();
+    });
+    // 动态计算本土48州的边界框
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    svg.querySelectorAll('path').forEach(p=>{
+      const d=p.getAttribute('d');
+      if(!d)return;
+      const nums=d.match(/-?\d+(\.\d+)?/g);
+      if(!nums)return;
+      for(let i=0;i<nums.length-1;i+=2){
+        const x=parseFloat(nums[i]);
+        const y=parseFloat(nums[i+1]);
+        if(x>0&&y>0){
+          if(x<minX)minX=x;
+          if(y<minY)minY=y;
+          if(x>maxX)maxX=x;
+          if(y>maxY)maxY=y;
+        }
+      }
+    });
+    if(minX<Infinity){
+      const pad=3;
+      svg.setAttribute('viewBox',(minX-pad)+' '+(minY-pad)+' '+(maxX-minX+pad*2)+' '+(maxY-minY+pad*2));
+    }
+  }
   svg.querySelectorAll('path').forEach(p=>{
     p.setAttribute('fill','#e2e8f0');
     p.setAttribute('stroke','#ffffff');
