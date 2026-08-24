@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>方中标签生成器</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* 全局控制面板样式 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; }
+        .control-panel { width: 340px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-right: 20px; height: calc(100vh - 80px); overflow-y: auto; box-sizing: border-box; }
+        .preview-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 50px; background: #e4e7eb; border-radius: 8px; position: relative; }
+        
+        h3 { margin-top: 0; color: #333; border-bottom: 2px solid #1890ff; padding-bottom: 8px; margin-top: 15px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 13px; color: #666; font-weight: bold; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        .row { display: flex; gap: 10px; }
+        .row .form-group { flex: 1; }
+        
+        button { width: 100%; padding: 12px; background: #1890ff; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        button:hover { background: #40a9ff; }
+        /* 新增高亮按钮样式 */
+        button.download-btn { background: #ff4d4f; }
+        button.download-btn:hover { background: #ff7875; }
+        button.print-btn { background: #52c41a; }
+        button.print-btn:hover { background: #73d13d; }
+
+        /* 标签画布容器样式 */
+        #label-wrapper { background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; justify-content: center; align-items: center; position: sticky; top: 50px; }
+        
+        /* 动态生成的物理标签样式 */
+        .printable-label {
+            background: white;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            border: 1px dashed #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 修复居中与爆框的核心控制 */
+        .element-wrapper { 
+            position: absolute; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 94%; 
+            display: flex;
+            justify-content: center;
+        }
+        
+        .barcode-img { 
+            max-width: 100%; 
+            height: auto; 
+            display: block; 
+        }
+        
+        .text-line1 { font-family: sans-serif; font-weight: 500; line-height: 1.3; word-break: break-all; text-align: left; }
+        .text-line2 { 
+            font-family: sans-serif; 
+            font-weight: bold; 
+            white-space: pre-wrap; 
+            text-align: left;
+            word-break: break-all;
+        }
+
+        /* 作者信息与访问统计区域 */
+        .author-footer {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            text-align: center;
+        }
+        .author-footer h4 { margin: 0 0 10px 0; color: #555; font-size: 14px; }
+
+        /* 🖨️ 传统的网页打印样式 */
+        @media print {
+            html, body { background: white; margin: 0 !important; padding: 0 !important; height: auto !important; }
+            .control-panel { display: none !important; }
+            .preview-panel { background: white; padding: 0 !important; display: block !important; border-radius: 0 !important; }
+            #label-wrapper { box-shadow: none !important; position: static !important; display: block !important; padding: 0 !important; margin: 0 !important; }
+            .printable-label { border: none !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; page-break-inside: avoid; break-inside: avoid; }
+            @page { size: var(--print-w) var(--print-h); margin: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="control-panel">
+        <h3>标签尺寸 (mm)</h3>
+        <div class="row">
+            <div class="form-group">
+                <label>标签宽度</label>
+                <input type="number" id="labelWidth" value="60" oninput="updateLayout()">
+            </div>
+            <div class="form-group">
+                <label>标签高度</label>
+                <input type="number" id="labelHeight" value="30" oninput="updateLayout()">
+            </div>
+        </div>
+
+        <h3>内容配置</h3>
+        <div class="form-group">
+            <label>1. 条码内容 (Code 128)</label>
+            <input type="text" id="barcodeData" value="X004DGCVG9" oninput="updateLayout()">
+        </div>
+        
+        <div class="form-group">
+            <label>2. 文本第一行 (商品标题)</label>
+            <textarea id="textLine1" rows="2" oninput="updateLayout()">USB-C Magnetic 3 Charging Cable</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>3. 文本第二行 (支持连续空格微调间距)</label>
+            <input type="text" id="textLine2" value="New  SN:4DGCVG9  Made in China" oninput="updateLayout()">
+        </div>
+
+        <h3>位置与大小微调</h3>
+        <div class="form-group">
+            <label>条码 垂直位置 (mm)</label>
+            <input type="number" id="barcodeTop" value="2" oninput="updateLayout()">
+        </div>
+        <div class="form-group">
+            <label>条码 线条密度 (单位宽度像素)</label>
+            <input type="number" id="barcodeLineWidth" value="2" step="0.5" oninput="updateLayout()">
+        </div>
+        <div class="form-group">
+            <label>条码 渲染高度 (mm)</label>
+            <input type="number" id="barcodeH" value="18" oninput="updateLayout()">
+        </div>
+        <div class="form-group">
+            <label>第一行 垂直位置 (mm)</label>
+            <input type="number" id="line1Top" value="19" oninput="updateLayout()">
+        </div>
+        <div class="form-group">
+            <label>第一行 字体大小 (pt)</label>
+            <input type="number" id="line1Size" value="8" oninput="updateLayout()">
+        </div>
+        <div class="form-group">
+            <label>第二行 垂直位置 (mm)</label>
+            <input type="number" id="line2Top" value="24" oninput="updateLayout()">
+        </div>
+        <div class="form-group">
+            <label>第二行 字体大小 (pt)</label>
+            <input type="number" id="line2Size" value="8" oninput="updateLayout()">
+        </div>
+
+        <button class="download-btn" onclick="exportCustomSizePDF()">🗐 导出PDF标签</button>
+        <button class="print-btn" onclick="printToPDF()">🖨️ 浏览器直接打印</button>
+        
+        <!-- 新增：带访问量统计的底部信息 -->
+        <div class="author-footer">
+            <h4>🏷️ 方中标签生成器 by DONGDONG</h4>
+            <!-- Visitor Badge API: 依靠 path 属性进行唯一识别 -->
+            <img src="https://api.visitorbadge.io/api/visitors?path=dongdong-label-generator-v1&label=本站累计访问&labelColor=%23555555&countColor=%231890ff&style=flat-square" alt="访问统计">
+        </div>
+    </div>
+
+    <div class="preview-panel">
+        <div id="label-wrapper">
+            <div id="liveLabel" class="printable-label">
+                <div id="wrapper-bc" class="element-wrapper">
+                    <img id="barcode" class="barcode-img">
+                </div>
+                <div id="wrapper-l1" class="element-wrapper text-line1"></div>
+                <div id="wrapper-l2" class="element-wrapper text-line2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mmToPx = 3.7795275591;
+
+        function updateLayout() {
+            const wMm = parseFloat(document.getElementById('labelWidth').value) || 60;
+            const hMm = parseFloat(document.getElementById('labelHeight').value) || 30;
+            
+            const barcodeData = document.getElementById('barcodeData').value;
+            const text1 = document.getElementById('textLine1').value;
+            const text2 = document.getElementById('textLine2').value;
+
+            const bcTop = parseFloat(document.getElementById('barcodeTop').value) || 0;
+            const bcLineWidth = parseFloat(document.getElementById('barcodeLineWidth').value) || 2;
+            const bcHeight = parseFloat(document.getElementById('barcodeH').value) || 16;
+            const l1Top = parseFloat(document.getElementById('line1Top').value) || 0;
+            const l1Size = parseFloat(document.getElementById('line1Size').value) || 8;
+            const l2Top = parseFloat(document.getElementById('line2Top').value) || 0;
+            const l2Size = parseFloat(document.getElementById('line2Size').value) || 9;
+
+            document.documentElement.style.setProperty('--print-w', `${wMm}mm`);
+            document.documentElement.style.setProperty('--print-h', `${hMm}mm`);
+
+            const label = document.getElementById('liveLabel');
+            label.style.width = `${wMm * mmToPx}px`;
+            label.style.height = `${hMm * mmToPx}px`;
+
+            const wpBc = document.getElementById('wrapper-bc');
+            wpBc.style.top = `${bcTop * mmToPx}px`;
+
+            const wpL1 = document.getElementById('wrapper-l1');
+            wpL1.style.top = `${l1Top * mmToPx}px`;
+            wpL1.style.fontSize = `${l1Size}pt`;
+            wpL1.innerText = text1;
+
+            const wpL2 = document.getElementById('wrapper-l2');
+            wpL2.style.top = `${l2Top * mmToPx}px`;
+            wpL2.style.fontSize = `${l2Size}pt`;
+            wpL2.innerHTML = text2.replace(/ /g, '&nbsp;');
+
+            if(barcodeData.trim() !== "") {
+                try {
+                    JsBarcode("#barcode", barcodeData, {
+                        format: "CODE128",
+                        width: bcLineWidth,            
+                        height: bcHeight * mmToPx,     
+                        displayValue: true,            
+                        fontSize: 13,                  
+                        margin: 0,
+                        background: "transparent"
+                    });
+                    document.getElementById('barcode').style.display = "block";
+                } catch(e) {
+                    console.error("条码生成失败");
+                }
+            } else {
+                document.getElementById('barcode').style.display = "none";
+            }
+        }
+
+        // 🏆 核心修复逻辑：强行在内存中绘制指定毫米大小的 PDF
+        async function exportCustomSizePDF() {
+            const { jsPDF } = window.jspdf;
+            
+            const wMm = parseFloat(document.getElementById('labelWidth').value) || 60;
+            const hMm = parseFloat(document.getElementById('labelHeight').value) || 30;
+            const labelElement = document.getElementById('liveLabel');
+
+            // 临时隐藏虚线框以确保 PDF 绝对干净
+            const originalBorder = labelElement.style.border;
+            labelElement.style.border = 'none';
+
+            try {
+                // 将 DOM 节点转换为超高分辨率画布（3倍抗锯齿，保证条码可扫描）
+                const canvas = await html2canvas(labelElement, {
+                    scale: 3, 
+                    useCORS: true,
+                    background: '#ffffff'
+                });
+                
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                
+                // 严谨创建指定 mm 尺寸的单页 PDF 文件
+                const pdf = new jsPDF({
+                    orientation: wMm > hMm ? 'l' : 'p',
+                    unit: 'mm',
+                    format: [wMm, hMm]
+                });
+
+                // 将高精度图片完美填充满该 PDF 页面
+                pdf.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+                
+                // 触发下载
+                pdf.save(`Label_${document.getElementById('barcodeData').value || 'export'}.pdf`);
+                
+            } catch (error) {
+                alert("生成 PDF 失败，请检查微应用权限或在浏览器中打开");
+                console.error(error);
+            } finally {
+                // 还原预览的虚线框
+                labelElement.style.border = originalBorder;
+            }
+        }
+
+        function printToPDF() {
+            window.print();
+        }
+
+        window.onload = updateLayout;
+    </script>
+</body>
+</html>

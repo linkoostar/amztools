@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>亚马逊工具箱</title>
+<style>
+:root{
+  --sidebar-bg:#fafbfc;--sidebar-border:#e8eaed;--sidebar-hover:#f1f5f9;
+  --sidebar-active:#eff6ff;--sidebar-active-text:#2563eb;
+  --sidebar-text:#64748b;--sidebar-cat:#94a3b8;--sidebar-logo:#1e293b;
+  --main-bg:#f5f7fa;--card:#ffffff;--border:#e8eaed;
+  --primary:#3b82f6;--primary-d:#2563eb;--primary-l:#eff6ff;
+  --ink:#1e293b;--muted:#64748b;
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+  --shadow:0 1px 2px rgba(0,0,0,.03);--shadow-md:0 3px 10px rgba(0,0,0,.05);
+  --sidebar-w:220px;--sidebar-collapsed:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--main-bg);color:var(--ink);font-size:14px;line-height:1.5;overflow:hidden}
+
+.app{display:flex;height:100vh}
+
+/* ===== 侧边栏 ===== */
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--sidebar-bg);display:flex;flex-direction:column;transition:width .2s ease,min-width .2s ease;border-right:1px solid var(--sidebar-border)}
+.app.collapsed .sidebar{width:var(--sidebar-collapsed);min-width:var(--sidebar-collapsed)}
+.sidebar-top{display:flex;align-items:center;gap:8px;padding:14px 16px 12px;border-bottom:1px solid var(--sidebar-border)}
+.sidebar-logo{font-size:15px;font-weight:700;color:var(--sidebar-logo);display:flex;align-items:center;gap:7px;flex:1;white-space:nowrap;overflow:hidden}
+.sidebar-logo .badge{font-size:9px;background:var(--primary);color:#fff;padding:2px 7px;border-radius:10px;font-weight:600;flex-shrink:0}
+.app.collapsed .sidebar-logo .text{display:none}
+.app.collapsed .sidebar-logo .badge{display:none}
+.sidebar-toggle{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;cursor:pointer;border-radius:6px;color:var(--muted);font-size:14px;flex-shrink:0;transition:.12s}
+.sidebar-toggle:hover{background:var(--sidebar-hover);color:var(--ink)}
+.sidebar-search{margin:10px 12px 4px;position:relative}
+.sidebar-search input{width:100%;background:#fff;border:1px solid var(--sidebar-border);border-radius:8px;padding:7px 10px 7px 30px;color:var(--ink);font-size:12px;outline:none;transition:.12s}
+.sidebar-search input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.sidebar-search input::placeholder{color:#9ca3af}
+.sidebar-search .icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:#9ca3af}
+.app.collapsed .sidebar-search{display:none}
+.sidebar-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0}
+.sidebar-nav::-webkit-scrollbar{width:4px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:2px}
+.nav-cat{padding:12px 16px 3px;font-size:10px;font-weight:700;color:var(--sidebar-cat);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.app.collapsed .nav-cat{display:none}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;color:var(--sidebar-text);cursor:pointer;font-size:13px;font-weight:500;transition:.12s;border-left:3px solid transparent;white-space:nowrap;position:relative}
+.nav-item:hover{background:var(--sidebar-hover);color:var(--ink)}
+.nav-item.active{background:var(--sidebar-active);color:var(--sidebar-active-text);border-left-color:var(--primary)}
+.nav-item .icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.nav-item .label{overflow:hidden;text-overflow:ellipsis}
+.nav-item .tag{margin-left:auto;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:600;flex-shrink:0}
+.nav-item .tag-dev{background:#e0e7ff;color:#4f46e5}
+.app.collapsed .nav-item{padding:8px 0;justify-content:center}
+.app.collapsed .nav-item .label,.app.collapsed .nav-item .tag{display:none}
+.sidebar-stats{padding:10px 16px;border-top:1px solid var(--sidebar-border);border-bottom:1px solid var(--sidebar-border)}
+.stats-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:3px}
+.stats-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.stats-row .dot-total{background:#94a3b8}
+.stats-row .dot-active{background:var(--green)}
+.stats-row .dot-dev{background:var(--amber)}
+.stats-row b{color:var(--ink);font-size:13px;margin-left:2px}
+.app.collapsed .sidebar-stats{padding:8px 0;text-align:center}
+.app.collapsed .stats-row{justify-content:center;font-size:0}
+.app.collapsed .stats-row .label,.app.collapsed .stats-row .dot{display:none}
+.app.collapsed .stats-row b{font-size:11px;margin:0}
+.app.collapsed .stats-row:first-child b{font-size:14px;color:var(--sidebar-active-text)}
+.sidebar-footer{padding:12px 16px;font-size:10px;color:var(--muted);line-height:1.6;white-space:nowrap;overflow:hidden}
+.sidebar-footer code{color:var(--ink);background:var(--sidebar-hover);padding:1px 5px;border-radius:3px;font-size:10px}
+.app.collapsed .sidebar-footer{display:none}
+
+/* ===== 主区域 ===== */
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.main::-webkit-scrollbar{width:7px}
+.main::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
+
+/* ===== 首页 ===== */
+.view-home{padding:22px 26px}
+.hero{background:linear-gradient(135deg,#eff6ff,#e0e7ff);border:1px solid #dbeafe;border-radius:14px;padding:20px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hero-left h1{font-size:20px;margin-bottom:4px;color:var(--ink)}
+.hero-left p{color:var(--muted);font-size:13px}
+.hero-right{display:flex;align-items:center;gap:16px}
+.hero-visit{display:flex;align-items:center;gap:8px}
+.hero-visit img{border-radius:6px}
+
+.section{margin-bottom:26px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.section-head h2{font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px}
+.section-head .hint{font-size:11px;color:var(--muted)}
+
+/* 即时工具 - 卡片网格，自适应宽度，最多4列 */
+.quick-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:560px){.quick-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.quick-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1500px){.quick-grid{grid-template-columns:repeat(4,1fr)}}
+.qt-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.qt-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.qt-head .icon{font-size:16px}
+.qt-head h3{font-size:13px;font-weight:600}
+.qt-head .desc{font-size:11px;color:var(--muted);margin-left:auto}
+.qt-clear{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap;display:flex;align-items:center;gap:3px}
+.qt-clear:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
+
+/* 标题计算器 */
+.title-section{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.title-section .ts-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.title-section .ts-label{font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:5px}
+.title-section .ts-label .limit-badge{font-size:9px;font-weight:600;padding:1px 7px;border-radius:10px;background:var(--primary-l);color:var(--primary-d)}
+.title-section .ts-limit-sel{font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;outline:none;color:var(--muted)}
+.title-section textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:inherit;font-size:12px;resize:vertical;min-height:42px;outline:none;transition:.12s}
+.title-section textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.ts-stats{display:flex;gap:12px;margin-top:6px;flex-wrap:wrap}
+.ts-stat{font-size:10px;color:var(--muted)}
+.ts-stat b{color:var(--ink);font-size:13px;margin-left:2px}
+.ts-bar{height:5px;background:#f1f5f9;border-radius:3px;margin-top:6px;overflow:hidden}
+.ts-bar-fill{height:100%;border-radius:3px;transition:width .3s,background .3s;width:0}
+.ts-status{font-size:10px;font-weight:600;margin-top:4px}
+.dual-total{display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--primary-l);border-radius:8px;flex-wrap:wrap}
+.dual-total .dt-label{font-size:11px;font-weight:700;color:var(--primary-d)}
+.dual-total .dt-stat{font-size:11px;color:var(--muted)}
+.dual-total .dt-stat b{color:var(--ink);font-size:13px;margin-left:2px}
+
+/* 评分计算器 */
+.rating-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.rkpi{background:var(--primary-l);border-radius:8px;padding:8px 10px;text-align:center}
+.rkpi .rv{font-size:18px;font-weight:700;color:var(--primary-d);display:block}
+.rkpi .rl{font-size:10px;color:var(--muted)}
+.rating-table{width:100%;border-collapse:collapse;font-size:12px}
+.rating-table th{background:#f8fafc;color:var(--muted);padding:5px 6px;text-align:center;font-weight:600;font-size:10px;border-bottom:1px solid var(--border)}
+.rating-table td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--border)}
+.rating-table .star-cell{font-weight:700;color:var(--ink);font-size:13px}
+.rating-table input{width:56px;padding:4px 5px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;outline:none}
+.rating-table input:focus{border-color:var(--primary)}
+.rating-table .pct{color:var(--muted);font-size:11px}
+.rating-projected{margin-top:8px;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:11px;color:#166534;display:none}
+.rating-projected.show{display:block}
+.rating-total-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px}
+.rating-total-row label{font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap}
+.rating-total-row input{width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center;outline:none}
+.rating-total-row input:focus{border-color:var(--primary)}
+.pct-sum{margin-left:auto;font-size:11px;color:var(--muted)}
+.rating-table .cnt{font-weight:600;color:var(--ink);font-size:12px}
+.rating-table .proj-cnt{font-weight:600;color:var(--primary-d);font-size:12px}
+.rating-table .proj-pct{font-weight:600;color:#16a34a;font-size:12px}
+
+/* 广告出价试算 */
+.ab-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.ab-row label{font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap}
+.ab-row input{width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;outline:none}
+.ab-row input:focus{border-color:var(--primary)}
+.ab-row select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none;cursor:pointer}
+.ab-table{width:100%;border-collapse:collapse;font-size:12px}
+.ab-table th{background:#f8fafc;color:var(--muted);padding:5px 6px;text-align:center;font-weight:600;font-size:10px;border-bottom:1px solid var(--border)}
+.ab-table td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--border)}
+.ab-table .pl-name{font-weight:600;color:var(--ink);font-size:11px;text-align:left}
+.ab-table input{width:50px;padding:4px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;outline:none}
+.ab-table input:focus{border-color:var(--primary)}
+.ab-table .actual{font-weight:700;color:var(--primary-d);font-size:13px}
+.ab-table .maxbid{font-weight:700;color:#dc2626;font-size:13px}
+
+/* 快捷导航 */
+.nav-groups{display:flex;flex-direction:column;gap:10px}
+.nav-group-title{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+.nav-links{display:flex;flex-wrap:wrap;gap:5px}
+.nav-link{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:14px;background:var(--primary-l);color:var(--primary-d);font-size:11px;font-weight:600;text-decoration:none;transition:.12s;white-space:nowrap;line-height:1.4}
+.nav-link:hover{background:var(--primary);color:#fff;transform:translateY(-1px)}
+.nav-link.ext{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.nav-link.ext:hover{background:#16a34a;color:#fff}
+.nav-link .flag{font-size:13px}
+
+/* 计费重计算器 */
+.bw-section{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.bw-label{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.bw-label .unit-tag{font-size:9px;font-weight:600;padding:1px 7px;border-radius:10px;background:var(--primary-l);color:var(--primary-d)}
+.bw-inputs{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.bw-input{display:flex;align-items:center;gap:4px}
+.bw-input label{font-size:11px;color:var(--muted);white-space:nowrap}
+.bw-input input{width:60px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center;outline:none}
+.bw-input input:focus{border-color:var(--primary)}
+.bw-input select{padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;color:var(--muted)}
+.bw-converted{margin-top:6px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.bw-converted b{color:var(--ink);font-weight:600}
+.bw-results{margin-top:4px}
+.bw-result-row{display:flex;gap:8px}
+.bw-result-item{flex:1;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+.bw-result-item.highlight{background:var(--primary-l);border-color:#bfdbfe}
+.bw-result-label{font-size:10px;color:var(--muted);margin-bottom:2px}
+.bw-result-value{font-size:18px;font-weight:700;color:var(--ink)}
+.bw-result-item.highlight .bw-result-value{color:var(--primary-d)}
+.bw-result-unit{font-size:10px;color:var(--muted)}
+.bw-result-note{font-size:10px;font-weight:600;margin-top:2px;color:var(--amber)}
+.bw-result-note.actual{color:var(--green)}
+
+/* placeholder */
+.qt-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:80px;color:var(--muted);text-align:center;gap:6px}
+.qt-placeholder .icon{font-size:24px}
+.qt-placeholder .label{font-size:12px;font-weight:600;color:#475569}
+.qt-placeholder .sub{font-size:10px}
+
+/* 工具卡片网格 */
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.tool-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:.15s;position:relative}
+.tool-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:#bfdbfe}
+.tool-card .top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.tool-card .icon{font-size:22px;line-height:1}
+.tool-card .name{font-size:13px;font-weight:700;color:var(--ink)}
+.tool-card .cat{margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--main-bg);color:var(--muted)}
+.tool-card .desc{font-size:11px;color:var(--muted);line-height:1.6}
+.tool-card .dev-badge{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;background:#e0e7ff;color:#4f46e5}
+
+/* ===== 工具视图 ===== */
+.view-tool{display:none;flex:1;flex-direction:column;height:100%}
+.tool-bar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--border)}
+.tool-bar .back{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);transition:.12s}
+.tool-bar .back:hover{background:var(--main-bg);border-color:var(--primary)}
+.tool-bar .title{font-size:14px;font-weight:600;color:var(--ink)}
+.tool-bar .path{font-size:11px;color:var(--muted);margin-left:auto;font-family:monospace}
+.tool-iframe{flex:1;border:none;width:100%;background:#fff}
+
+.dev-modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center;z-index:999}
+.dev-modal .box{background:#fff;border-radius:12px;padding:30px 40px;text-align:center;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.15)}
+.dev-modal .box .icon{font-size:36px;margin-bottom:10px}
+.dev-modal .box h3{font-size:15px;margin-bottom:6px}
+.dev-modal .box p{font-size:12px;color:var(--muted);margin-bottom:16px}
+.dev-modal .box button{padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-logo">🛠️ <span class="text">亚马逊工具箱</span> <span class="badge">v1.0</span></div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="收起/展开侧边栏">◀</button>
+    </div>
+    <div class="sidebar-search">
+      <span class="icon">🔍</span>
+      <input type="text" id="toolSearch" placeholder="搜索工具...">
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-stats" id="sidebarStats"></div>
+    <div class="sidebar-footer">新增工具：新建文件夹 → 在 <code>config</code> 加一行 → 自动加载</div>
+  </aside>
+
+  <main class="main">
+    <div class="view-home" id="viewHome">
+      <div class="hero">
+        <div class="hero-left">
+          <h1>亚马逊工具箱</h1>
+          <p>一站式运营工具集合 — 词根分析、标签制作、AI文案，持续扩展中</p>
+        </div>
+        <div class="hero-right">
+          <div class="hero-visit">
+            <img src="https://api.visitorbadge.io/api/visitors?path=amazon-toolbox-v1&label=访问统计&labelColor=%2364748b&countColor=%233b82f6&style=flat-square" alt="访问统计">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>⚡ 即时工具</h2>
+          <span class="hint">首页直接使用，无需跳转</span>
+        </div>
+        <div class="quick-grid" id="quickGrid">
+
+          <!-- 标题字符计算器 -->
+          <div class="qt-card">
+            <div class="qt-head"><span class="icon">📝</span><h3>标题字符计算器</h3><button class="qt-clear" onclick="clearTitleCounter()">✕ 清除</button></div>
+            <div class="title-section">
+              <div class="ts-head">
+                <div class="ts-label">主标题 <span class="limit-badge" id="mainBadge">75</span></div>
+                <select class="ts-limit-sel" id="mainLimitSel"><option value="75" selected>75</option><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="custom">自定义</option></select>
+                <input type="number" class="ts-limit-sel hidden" id="mainCustom" value="75" min="1" max="500" style="width:50px">
+              </div>
+              <textarea id="mainTitleInput" placeholder="品牌+核心词+产品类型..."></textarea>
+              <div class="ts-stats"><span class="ts-stat">字符<b id="mainChars">0</b></span><span class="ts-stat">字节<b id="mainBytes">0</b></span><span class="ts-stat">词<b id="mainWords">0</b></span></div>
+              <div class="ts-bar"><div class="ts-bar-fill" id="mainBar"></div></div>
+              <div class="ts-status" id="mainStatus"></div>
+            </div>
+            <div class="title-section">
+              <div class="ts-head">
+                <div class="ts-label">副标题 <span class="limit-badge" id="subBadge">125</span></div>
+                <select class="ts-limit-sel" id="subLimitSel"><option value="125" selected>125</option><option value="80">80</option><option value="150">150</option><option value="200">200</option><option value="custom">自定义</option></select>
+                <input type="number" class="ts-limit-sel hidden" id="subCustom" value="125" min="1" max="500" style="width:50px">
+              </div>
+              <textarea id="subTitleInput" placeholder="特性、用途、规格补充..."></textarea>
+              <div class="ts-stats"><span class="ts-stat">字符<b id="subChars">0</b></span><span class="ts-stat">字节<b id="subBytes">0</b></span><span class="ts-stat">词<b id="subWords">0</b></span></div>
+              <div class="ts-bar"><div class="ts-bar-fill" id="subBar"></div></div>
+              <div class="ts-status" id="subStatus"></div>
+            </div>
+            <div class="dual-total" id="dualTotal">
+              <span class="dt-label">合计</span><span class="dt-stat">总字符<b id="totalChars">0</b></span><span class="dt-stat">总字节<b id="totalBytes">0</b></span><span class="dt-stat" id="totalStatus" style="margin-left:auto">请输入标题</span>
+            </div>
+          </div>
+
+          <!-- 评分星级计算器 -->
+          <div class="qt-card">
+            <div class="qt-head"><span class="icon">⭐</span><h3>评分星级计算</h3><button class="qt-clear" onclick="clearRatingCalculator()">✕ 清除</button></div>
+            <div class="rating-kpis">
+              <div class="rkpi"><span class="rv" id="rDisplay">0.00</span><span class="rl">显示评分</span></div>
+              <div class="rkpi"><span class="rv" id="rTotal">0</span><span class="rl">总评价数</span></div>
+              <div class="rkpi"><span class="rv" id="rProjTotal">0</span><span class="rl">预期总评价</span></div>
+              <div class="rkpi"><span class="rv" id="rNeg">0%</span><span class="rl">差评占比</span></div>
+            </div>
+            <div class="rating-total-row">
+              <label>总评价数</label>
+              <input type="number" id="rTotalInput" value="166" min="0">
+              <span class="pct-sum" id="pctSum">比例合计: 100%</span>
+            </div>
+            <table class="rating-table">
+              <thead><tr><th>星级</th><th>比例(%)</th><th>评价数</th><th>回评预期</th><th>预期比例</th><th>预期后</th></tr></thead>
+              <tbody id="ratingBody"></tbody>
+            </table>
+            <div class="rating-projected" id="ratingProjected"></div>
+          </div>
+
+          <!-- 计费重计算器 -->
+          <div class="qt-card">
+            <div class="qt-head"><span class="icon">⚖️</span><h3>计费重计算器</h3><button class="qt-clear" onclick="clearBillingWeight()">✕ 清除</button></div>
+            <div class="bw-section">
+              <div class="bw-label">尺寸 <span class="unit-tag" id="bwDimTag">CM</span></div>
+              <div class="bw-inputs">
+                <div class="bw-input"><label>长</label><input type="number" id="bwL" value="60" min="0" step="0.1"></div>
+                <div class="bw-input"><label>宽</label><input type="number" id="bwW" value="36" min="0" step="0.1"></div>
+                <div class="bw-input"><label>高</label><input type="number" id="bwH" value="39" min="0" step="0.1"></div>
+                <div class="bw-input"><select id="bwDimUnit"><option value="cm" selected>CM</option><option value="in">IN</option><option value="mm">MM</option></select></div>
+              </div>
+              <div class="bw-converted">
+                <span>→ <b id="bwInL">23.6</b>×<b id="bwInW">14.2</b>×<b id="bwInH">15.4</b> in</span>
+                <span>→ <b id="bwFtL">1.97</b>×<b id="bwFtW">1.18</b>×<b id="bwFtH">1.28</b> ft</span>
+              </div>
+            </div>
+            <div class="bw-section">
+              <div class="bw-label">实际重量 <span class="unit-tag" id="bwWtTag">KG</span></div>
+              <div class="bw-inputs">
+                <div class="bw-input"><input type="number" id="bwWeight" value="3.3" min="0" step="0.01"></div>
+                <div class="bw-input"><select id="bwWtUnit"><option value="kg" selected>KG</option><option value="lb">LB</option><option value="oz">OZ</option><option value="g">G</option></select></div>
+              </div>
+              <div class="bw-converted">
+                <span>→ <b id="bwKg">3.30</b> KG</span>
+                <span>→ <b id="bwLb">7.28</b> LB</span>
+              </div>
+            </div>
+            <div class="bw-results">
+              <div class="bw-result-row">
+                <div class="bw-result-item">
+                  <div class="bw-result-label">体积重 ÷5000</div>
+                  <div class="bw-result-value" id="bwVol5000">16.85</div>
+                  <div class="bw-result-unit">KG</div>
+                </div>
+                <div class="bw-result-item">
+                  <div class="bw-result-label">体积重 ÷6000</div>
+                  <div class="bw-result-value" id="bwVol6000">14.04</div>
+                  <div class="bw-result-unit">KG</div>
+                </div>
+              </div>
+              <div style="height:8px"></div>
+              <div class="bw-result-row">
+                <div class="bw-result-item highlight">
+                  <div class="bw-result-label">计费重 (÷5000)</div>
+                  <div class="bw-result-value" id="bwBill5000">16.85</div>
+                  <div class="bw-result-unit">KG</div>
+                  <div class="bw-result-note" id="bwNote5000">⚠ 体积重计费</div>
+                </div>
+                <div class="bw-result-item highlight">
+                  <div class="bw-result-label">计费重 (÷6000)</div>
+                  <div class="bw-result-value" id="bwBill6000">14.04</div>
+                  <div class="bw-result-unit">KG</div>
+                  <div class="bw-result-note" id="bwNote6000">⚠ 体积重计费</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 广告出价试算 -->
+          <div class="qt-card">
+            <div class="qt-head"><span class="icon">🎯</span><h3>广告出价试算</h3><button class="qt-clear" onclick="clearAdBid()">✕ 清除</button></div>
+            <div class="ab-row">
+              <label>正常出价(CPC)</label>
+              <input type="number" id="abBase" value="0.57" min="0" step="0.01">
+              <select id="abStrategy">
+                <option value="updown" selected>提高或降低</option>
+                <option value="down">仅降低</option>
+                <option value="fixed">固定出价</option>
+              </select>
+            </div>
+            <table class="ab-table">
+              <thead><tr><th>广告位</th><th>增加比例</th><th>实际出价</th><th>最高出价</th></tr></thead>
+              <tbody id="abBody"></tbody>
+            </table>
+          </div>
+
+          <!-- 快捷导航 -->
+          <div class="qt-card">
+            <div class="qt-head"><span class="icon">🔗</span><h3>快捷导航</h3></div>
+            <div class="nav-groups">
+              <div class="nav-group">
+                <div class="nav-group-title">🏪 亚马逊前台</div>
+                <div class="nav-links">
+                  <a href="https://www.amazon.com" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇺🇸</span>美国</a>
+                  <a href="https://www.amazon.co.uk" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇬🇧</span>英国</a>
+                  <a href="https://www.amazon.de" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇩🇪</span>德国</a>
+                  <a href="https://www.amazon.co.jp" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇯🇵</span>日本</a>
+                  <a href="https://www.amazon.fr" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇫🇷</span>法国</a>
+                  <a href="https://www.amazon.it" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇮🇹</span>意大利</a>
+                  <a href="https://www.amazon.es" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇪🇸</span>西班牙</a>
+                  <a href="https://www.amazon.ca" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇨🇦</span>加拿大</a>
+                  <a href="https://www.amazon.com.mx" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇲🇽</span>墨西哥</a>
+                  <a href="https://www.amazon.com.au" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇦🇺</span>澳大利亚</a>
+                  <a href="https://www.amazon.com.br" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇧🇷</span>巴西</a>
+                  <a href="https://www.amazon.in" target="_blank" rel="noopener" class="nav-link"><span class="flag">🇮🇳</span>印度</a>
+                </div>
+              </div>
+              <div class="nav-group">
+                <div class="nav-group-title">🚚 物流查询</div>
+                <div class="nav-links">
+                  <a href="https://www.ups.com/track" target="_blank" rel="noopener" class="nav-link ext"> UPS</a>
+                  <a href="https://www.dhl.com/en/express/tracking" target="_blank" rel="noopener" class="nav-link ext"> DHL</a>
+                  <a href="https://www.fedex.com/fedextrack/" target="_blank" rel="noopener" class="nav-link ext"> FedEx</a>
+                  <a href="https://tools.usps.com/go/TrackConfirmAction" target="_blank" rel="noopener" class="nav-link ext"> USPS</a>
+                  <a href="https://www.17track.net" target="_blank" rel="noopener" class="nav-link ext"> 17Track</a>
+                  <a href="https://www.4px.com" target="_blank" rel="noopener" class="nav-link ext"> 递四方</a>
+                  <a href="https://www.sf-express.com" target="_blank" rel="noopener" class="nav-link ext"> 顺丰</a>
+                  <a href="https://www.yunexpress.com" target="_blank" rel="noopener" class="nav-link ext"> 云途</a>
+                  <a href="https://www.yw56.com" target="_blank" rel="noopener" class="nav-link ext"> 燕文</a>
+                  <a href="https://intmail.183.com.cn" target="_blank" rel="noopener" class="nav-link ext"> 中国邮政</a>
+                  <a href="https://www.cainiao.com" target="_blank" rel="noopener" class="nav-link ext"> 菜鸟</a>
+                  <a href="https://www.yanwen.com" target="_blank" rel="noopener" class="nav-link ext"> 燕文物流</a>
+                </div>
+              </div>
+              <div class="nav-group">
+                <div class="nav-group-title">🛠️ 运营工具</div>
+                <div class="nav-links">
+                  <a href="https://www.sellersprite.com" target="_blank" rel="noopener" class="nav-link ext"> 卖家精灵</a>
+                  <a href="https://www.keepa.com" target="_blank" rel="noopener" class="nav-link ext"> Keepa</a>
+                  <a href="https://www.helium10.com" target="_blank" rel="noopener" class="nav-link ext"> Helium 10</a>
+                  <a href="https://www.junglescout.com" target="_blank" rel="noopener" class="nav-link ext"> Jungle Scout</a>
+                  <a href="https://www.oalur.com" target="_blank" rel="noopener" class="nav-link ext"> 鸥鹭</a>
+                  <a href="https://www.amz123.com" target="_blank" rel="noopener" class="nav-link ext"> 亚马逊卖家之家</a>
+                  <a href="https://www.siftool.com" target="_blank" rel="noopener" class="nav-link ext"> SIF</a>
+                  <a href="https://www.asinking.com" target="_blank" rel="noopener" class="nav-link ext"> Asinking</a>
+                  <a href="https://www.sellersync.com" target="_blank" rel="noopener" class="nav-link ext"> 卖家同步</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>📦 全部工具</h2><span class="hint">点击卡片打开完整工具</span></div>
+        <div class="tool-grid" id="toolGrid"></div>
+      </div>
+    </div>
+
+    <div class="view-tool" id="viewTool">
+      <div class="tool-bar">
+        <button class="back" id="backBtn">← 返回首页</button>
+        <span class="title" id="toolTitle"></span>
+        <span class="path" id="toolPath"></span>
+      </div>
+      <iframe class="tool-iframe" id="toolFrame"></iframe>
+    </div>
+  </main>
+</div>
+
+<div class="dev-modal hidden" id="devModal" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="box"><div class="icon">🚧</div><h3 id="devModalName">工具开发中</h3><p id="devModalDesc">该工具正在开发中，敬请期待。</p><button onclick="document.getElementById('devModal').classList.add('hidden')">知道了</button></div>
+</div>
+
+<script>
+const TOOLS=[
+  {id:'root-analysis',name:'词根分析',icon:'📊',path:'root-analysis/index.html',category:'广告优化',desc:'搜索词词根拆分、组合建议、否定词筛选、多站点隔离',status:'active'},
+  {id:'profit-calc',name:'利润试算',icon:'💰',path:'profit-calc/index.html',category:'选品运营',desc:'FBA费用自动计算、售价/利润双向试算、ROI分析，支持多站点',status:'active'},
+  {id:'pdf-labels',name:'PDF标签制作',icon:'🏷️',path:'pdf-labels/index.html',category:'运营工具',desc:'生成符合亚马逊FBA标签规格的PDF，支持条码、文本、批量打印',status:'active'},
+  {id:'ai-title',name:'AI标题文案',icon:'✍️',path:'ai-title/index.html',category:'运营工具',desc:'AI生成产品标题、五点描述、Search Terms、A+页面文案',status:'active'},
+  {id:'fba-map',name:'FBA仓库地图',icon:'🗺️',path:'fba-map/index.html',category:'运营工具',desc:'查看各站点FBA仓库代码、地址，选择后一键复制并在地图上定位',status:'active'},
+];
+
+let currentView='home',currentTool=null;
+function goHome(){currentView='home';currentTool=null;document.getElementById('viewHome').style.display='';document.getElementById('viewTool').style.display='none';document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.querySelector('.nav-item[data-route="home"]')?.classList.add('active');}
+function openTool(id){const t=TOOLS.find(x=>x.id===id);if(!t)return;if(t.status==='dev'){document.getElementById('devModalName').textContent=t.name+' — 开发中';document.getElementById('devModalDesc').textContent=t.desc;document.getElementById('devModal').classList.remove('hidden');return;}currentView='tool';currentTool=t;document.getElementById('viewHome').style.display='none';document.getElementById('viewTool').style.display='flex';document.getElementById('toolTitle').textContent=t.icon+' '+t.name;document.getElementById('toolPath').textContent=t.path;document.getElementById('toolFrame').src=t.path;document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.querySelector('.nav-item[data-tool="'+id+'"]')?.classList.add('active');}
+
+function renderSidebar(){const nav=document.getElementById('sidebarNav');let html='<div class="nav-item active" data-route="home" title="首页"><span class="icon">🏠</span><span class="label">首页</span></div>';const cats={};TOOLS.forEach(t=>{if(!cats[t.category])cats[t.category]=[];cats[t.category].push(t);});for(const[c,ts]of Object.entries(cats)){html+='<div class="nav-cat">'+c+'</div>';for(const t of ts){html+='<div class="nav-item" data-tool="'+t.id+'" title="'+t.name+'"><span class="icon">'+t.icon+'</span><span class="label">'+t.name+'</span>'+(t.status==='dev'?'<span class="tag tag-dev">dev</span>':'')+'</div>';}}nav.innerHTML=html;nav.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>{if(n.dataset.route==='home')goHome();else if(n.dataset.tool)openTool(n.dataset.tool);};});}
+function renderSidebarStats(){const t=TOOLS.length,a=TOOLS.filter(x=>x.status==='active').length,d=TOOLS.filter(x=>x.status==='dev').length;document.getElementById('sidebarStats').innerHTML='<div class="stats-row"><span class="dot dot-total"></span><b>'+t+'</b><span class="label"> 已注册</span></div><div class="stats-row"><span class="dot dot-active"></span><b>'+a+'</b><span class="label"> 可用</span></div><div class="stats-row"><span class="dot dot-dev"></span><b>'+d+'</b><span class="label"> 开发中</span></div>';}
+function initSidebarToggle(){const app=document.getElementById('app'),btn=document.getElementById('sidebarToggle');if(localStorage.getItem('toolbox_collapsed')==='1'){app.classList.add('collapsed');btn.textContent='▶';}btn.onclick=()=>{app.classList.toggle('collapsed');const c=app.classList.contains('collapsed');btn.textContent=c?'▶':'◀';localStorage.setItem('toolbox_collapsed',c?'1':'0');};}
+function renderToolGrid(){document.getElementById('toolGrid').innerHTML=TOOLS.map(t=>'<div class="tool-card" onclick="openTool(\''+t.id+'\')">'+(t.status==='dev'?'<span class="dev-badge">开发中</span>':'')+'<div class="top"><span class="icon">'+t.icon+'</span><span class="name">'+t.name+'</span><span class="cat">'+t.category+'</span></div><div class="desc">'+t.desc+'</div></div>').join('');}
+
+/* ===== 双标题计算器 ===== */
+function initTitleCounter(){
+  const mi=document.getElementById('mainTitleInput'),si=document.getElementById('subTitleInput');
+  const ml=document.getElementById('mainLimitSel'),sl=document.getElementById('subLimitSel');
+  const mc=document.getElementById('mainCustom'),sc=document.getElementById('subCustom');
+  function gl(sel,cus){if(sel.value==='custom')return parseInt(cus.value)||0;return parseInt(sel.value)||0;}
+  function upSingle(input,p,sel,cus,badgeId){
+    const t=input.value,chars=t.length,bytes=new Blob([t]).size,words=t.trim()?t.trim().split(/\s+/).length:0;
+    const limit=gl(sel,cus),pct=limit>0?(chars/limit*100):0;
+    document.getElementById(p+'Chars').textContent=chars;
+    document.getElementById(p+'Bytes').textContent=bytes;
+    document.getElementById(p+'Words').textContent=words;
+    const bar=document.getElementById(p+'Bar');bar.style.width=Math.min(pct,100)+'%';
+    bar.style.background=pct>100?'var(--red)':'var(--green)';
+    const st=document.getElementById(p+'Status'),rem=limit-chars;
+    st.innerHTML=chars===0?'<span style="color:var(--muted)">请输入</span>':chars>limit?'<span style="color:var(--red)">✗超出'+(chars-limit)+'</span>':'<span style="color:var(--green)">✓剩余'+rem+'</span>';
+    if(badgeId)document.getElementById(badgeId).textContent=limit;
+  }
+  function update(){
+    upSingle(mi,'main',ml,mc,'mainBadge');upSingle(si,'sub',sl,sc,'subBadge');
+    const tc=mi.value.length+si.value.length,tb=new Blob([mi.value]).size+new Blob([si.value]).size;
+    const tw=(mi.value.trim()?mi.value.trim().split(/\s+/).length:0)+(si.value.trim()?si.value.trim().split(/\s+/).length:0);
+    document.getElementById('totalChars').textContent=tc;
+    document.getElementById('totalBytes').textContent=tb;
+    document.getElementById('totalWords').textContent=tw;
+    const mo=mi.value.length>gl(ml,mc),so=si.value.length>gl(sl,sc);
+    document.getElementById('totalStatus').innerHTML=tc===0?'<span style="color:var(--muted)">请输入标题</span>':(mo||so)?'<span style="color:var(--red)">✗有标题超限</span>':'<span style="color:var(--green)">✓主副标题均符合</span>';
+  }
+  [mi,si].forEach(e=>e.addEventListener('input',update));
+  ml.onchange=()=>{mc.classList.toggle('hidden',ml.value!=='custom');update();};
+  sl.onchange=()=>{sc.classList.toggle('hidden',sl.value!=='custom');update();};
+  [mc,sc].forEach(e=>e.addEventListener('input',update));
+}
+
+/* ===== 评分星级计算器 ===== */
+function initRatingCalculator(){
+  const stars=[5,4,3,2,1];
+  const body=document.getElementById('ratingBody');
+  // 渲染: 星级 | 比例(%) input | 评价数 calc | 回评预期 input | 预期后 calc
+  body.innerHTML=stars.map(s=>'<tr><td class="star-cell">'+s+'★</td><td><input type="number" id="rpct'+s+'" value="0" min="0" max="100" step="0.1"></td><td class="cnt" id="rcnt'+s+'">0</td><td><input type="number" id="re'+s+'" value="" min="0" placeholder="0"></td><td class="proj-pct" id="rppct'+s+'">-</td><td class="proj-cnt" id="rproj'+s+'">0</td></tr>').join('');
+  const totalInput=document.getElementById('rTotalInput');
+  function update(){
+    const total=parseInt(totalInput.value)||0;
+    let pctSum=0,calcTotal=0,totalExpected=0,projTotal=0,projWeighted=0,weighted=0;
+    const counts={},expected={},pcts={};
+    // 第一轮：计算所有值
+    stars.forEach(s=>{
+      const pct=parseFloat(document.getElementById('rpct'+s).value)||0;
+      const e=parseInt(document.getElementById('re'+s).value)||0;
+      const c=Math.round(total*pct/100);
+      counts[s]=c;expected[s]=e;pcts[s]=pct;
+      pctSum+=pct;calcTotal+=c;weighted+=s*c;
+      totalExpected+=e;projTotal+=c+e;projWeighted+=s*(c+e);
+    });
+    // 第二轮：渲染
+    stars.forEach(s=>{
+      const c=counts[s],e=expected[s],pct=pcts[s];
+      document.getElementById('rcnt'+s).textContent=c;
+      document.getElementById('rproj'+s).textContent=c+e;
+      // 预期比例：有回评预期时按新总数算比例，无时显示原比例
+      const projPct=totalExpected>0?(projTotal>0?((c+e)/projTotal*100):0):pct;
+      document.getElementById('rppct'+s).textContent=projPct.toFixed(1)+'%';
+    });
+    // 比例合计校验
+    const pctSumEl=document.getElementById('pctSum');
+    if(Math.abs(pctSum-100)<0.5){
+      pctSumEl.textContent='比例合计: 100% ✓';
+      pctSumEl.style.color='var(--muted)';
+    }else{
+      pctSumEl.textContent='比例合计: '+pctSum.toFixed(1)+'% ✗ 请调整至100%';
+      pctSumEl.style.color='var(--red)';
+    }
+    // KPI
+    const rating=calcTotal>0?(weighted/calcTotal):0;
+    const negCount=counts[1]+counts[2]+counts[3];
+    const negPct=calcTotal>0?(negCount/calcTotal*100):0;
+    document.getElementById('rDisplay').textContent=rating.toFixed(2);
+    document.getElementById('rTotal').textContent=total;
+    document.getElementById('rProjTotal').textContent=projTotal;
+    document.getElementById('rNeg').textContent=negPct.toFixed(0)+'%';
+    // 预期评分
+    const proj=document.getElementById('ratingProjected');
+    if(totalExpected>0){
+      const pr=projTotal>0?(projWeighted/projTotal):0;
+      const prNeg=(counts[1]+(expected[1]||0)+counts[2]+(expected[2]||0)+counts[3]+(expected[3]||0))/projTotal*100;
+      proj.innerHTML='加入回评预期后：预期评分 <b>'+pr.toFixed(2)+'</b> | 预期总评价 <b>'+projTotal+'</b> | 预期差评占比 <b>'+prNeg.toFixed(0)+'%</b>';
+      proj.classList.add('show');
+    }else{proj.classList.remove('show');}
+  }
+  totalInput.addEventListener('input',update);
+  body.querySelectorAll('input').forEach(i=>i.addEventListener('input',update));
+  // 预填示例: 166条评价 52.4/9.0/11.4/2.4/24.7
+  document.getElementById('rpct5').value=52.4;document.getElementById('rpct4').value=9.0;
+  document.getElementById('rpct3').value=11.4;document.getElementById('rpct2').value=2.4;document.getElementById('rpct1').value=24.7;
+  update();
+}
+
+function initSearch(){const s=document.getElementById('toolSearch');s.addEventListener('input',()=>{const q=s.value.toLowerCase().trim();document.querySelectorAll('.nav-item').forEach(n=>{if(n.dataset.route==='home')return;n.style.display=q&&!n.textContent.toLowerCase().includes(q)?'none':'';});document.querySelectorAll('.nav-cat').forEach(c=>{let el=c.nextElementSibling,has=false;while(el&&!el.classList.contains('nav-cat')&&el.classList.contains('nav-item')){if(el.style.display!=='none'){has=true;break;}el=el.nextElementSibling;}c.style.display=q&&!has?'none':'';});});}
+
+/* ===== 计费重计算器 ===== */
+function initBillingWeight(){
+  const L=document.getElementById('bwL'),W=document.getElementById('bwW'),H=document.getElementById('bwH');
+  const wt=document.getElementById('bwWeight'),du=document.getElementById('bwDimUnit'),wu=document.getElementById('bwWtUnit');
+  function toCm(val,unit){if(unit==='cm')return val;if(unit==='in')return val*2.54;if(unit==='mm')return val/10;return val;}
+  function toKg(val,unit){if(unit==='kg')return val;if(unit==='lb')return val*0.453592;if(unit==='oz')return val*0.0283495;if(unit==='g')return val/1000;return val;}
+  function update(){
+    const lCm=toCm(parseFloat(L.value)||0,du.value);
+    const wCm=toCm(parseFloat(W.value)||0,du.value);
+    const hCm=toCm(parseFloat(H.value)||0,du.value);
+    const kg=toKg(parseFloat(wt.value)||0,wu.value);
+    // 尺寸换算
+    document.getElementById('bwInL').textContent=(lCm/2.54).toFixed(1);
+    document.getElementById('bwInW').textContent=(wCm/2.54).toFixed(1);
+    document.getElementById('bwInH').textContent=(hCm/2.54).toFixed(1);
+    document.getElementById('bwFtL').textContent=(lCm/30.48).toFixed(2);
+    document.getElementById('bwFtW').textContent=(wCm/30.48).toFixed(2);
+    document.getElementById('bwFtH').textContent=(hCm/30.48).toFixed(2);
+    // 重量换算
+    document.getElementById('bwKg').textContent=kg.toFixed(2);
+    document.getElementById('bwLb').textContent=(kg*2.20462).toFixed(2);
+    document.getElementById('bwDimTag').textContent=du.value.toUpperCase();
+    document.getElementById('bwWtTag').textContent=wu.value.toUpperCase();
+    // 体积重
+    const vol=lCm*wCm*hCm;
+    const v5000=vol/5000,v6000=vol/6000;
+    document.getElementById('bwVol5000').textContent=v5000.toFixed(2);
+    document.getElementById('bwVol6000').textContent=v6000.toFixed(2);
+    // 计费重 = max(实际重, 体积重)
+    const b5000=Math.max(kg,v5000),b6000=Math.max(kg,v6000);
+    document.getElementById('bwBill5000').textContent=b5000.toFixed(2);
+    document.getElementById('bwBill6000').textContent=b6000.toFixed(2);
+    document.getElementById('bwNote5000').textContent=v5000>kg?'⚠ 体积重计费':'✓ 实际重计费';
+    document.getElementById('bwNote5000').className='bw-result-note'+(v5000<=kg?' actual':'');
+    document.getElementById('bwNote6000').textContent=v6000>kg?'⚠ 体积重计费':'✓ 实际重计费';
+    document.getElementById('bwNote6000').className='bw-result-note'+(v6000<=kg?' actual':'');
+  }
+  [L,W,H,wt,du,wu].forEach(e=>e.addEventListener('input',update));
+  update();
+}
+
+/* ===== 清除按钮 ===== */
+function clearTitleCounter(){
+  document.getElementById('mainTitleInput').value='';
+  document.getElementById('subTitleInput').value='';
+  document.getElementById('mainTitleInput').dispatchEvent(new Event('input'));
+}
+function clearRatingCalculator(){
+  document.getElementById('rTotalInput').value=0;
+  [5,4,3,2,1].forEach(s=>{
+    document.getElementById('rpct'+s).value=0;
+    document.getElementById('re'+s).value=0;
+  });
+  document.getElementById('rTotalInput').dispatchEvent(new Event('input'));
+}
+function clearBillingWeight(){
+  document.getElementById('bwL').value=0;
+  document.getElementById('bwW').value=0;
+  document.getElementById('bwH').value=0;
+  document.getElementById('bwWeight').value=0;
+  document.getElementById('bwL').dispatchEvent(new Event('input'));
+}
+
+function initAdBid(){
+  const placements=[
+    {id:'tos',name:'搜索结果（首页）',def:80},
+    {id:'ros',name:'搜索结果其余位置',def:0},
+    {id:'pp',name:'商品页面',def:0}
+  ];
+  // 策略倍率：提高或降低时各位置的最大上浮倍率
+  const STRATEGY_MULT={
+    updown:{tos:2,ros:2,pp:2},
+    down:{tos:1,ros:1,pp:1},
+    fixed:{tos:1,ros:1,pp:1}
+  };
+  const body=document.getElementById('abBody');
+  body.innerHTML=placements.map(p=>'<tr><td class="pl-name">'+p.name+'</td><td><input type="number" id="abpct'+p.id+'" value="'+p.def+'" min="0" max="900" step="5">%</td><td class="actual" id="abact'+p.id+'">-</td><td class="maxbid" id="abmax'+p.id+'">-</td></tr>').join('');
+  const baseInput=document.getElementById('abBase');
+  const stratSel=document.getElementById('abStrategy');
+  function update(){
+    const base=parseFloat(baseInput.value)||0;
+    const strat=stratSel.value;
+    const mult=STRATEGY_MULT[strat];
+    placements.forEach(p=>{
+      const pct=parseFloat(document.getElementById('abpct'+p.id).value)||0;
+      const actual=base*(1+pct/100);
+      const max=actual*mult[p.id];
+      document.getElementById('abact'+p.id).textContent=actual.toFixed(2);
+      document.getElementById('abmax'+p.id).textContent=max.toFixed(2);
+    });
+  }
+  baseInput.addEventListener('input',update);
+  stratSel.addEventListener('change',update);
+  body.querySelectorAll('input').forEach(i=>i.addEventListener('input',update));
+  update();
+}
+function clearAdBid(){
+  document.getElementById('abBase').value=0;
+  ['tos','ros','pp'].forEach(p=>{document.getElementById('abpct'+p).value=0;});
+  document.getElementById('abBase').dispatchEvent(new Event('input'));
+}
+
+function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();document.getElementById('backBtn').onclick=goHome;}
+init();
+</script>
+</body>
+</html>

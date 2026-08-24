@@ -1,0 +1,15 @@
+# ============================================
+# Cloudflare Pages 配置示例
+# 使用前：把 database_id 改成你自己的
+# 部署命令：wrangler pages deploy . --project-name=amazon-toolbox
+# ============================================
+
+name = "amazon-toolbox"
+compatibility_date = "2024-01-01"
+
+# D1 数据库绑定
+# 创建命令：wrangler d1 create fza_toolbox
+[[d1_databases]]
+binding = "DB"
+database_name = "fza_toolbox"
+database_id = "your-database-id-here"

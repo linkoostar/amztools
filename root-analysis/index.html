@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>亚马逊词根分析工具</title>
+<style>
+:root{
+  --bg:#f4f6fb; --card:#ffffff; --border:#e2e8f0; --txt:#1f2937; --muted:#6b7280;
+  --primary:#2563eb; --primary-d:#1d4ed8; --accent:#0ea5e9; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+  --thead:#1e293b; --zebra:#f8fafc; --hover:#eff6ff; --chip:#eef2ff; --chip-b:#c7d2fe;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5;font-size:14px}
+.wrap{padding:22px 26px}
+header{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:22px 26px;border-radius:14px;box-shadow:0 6px 20px rgba(37,99,235,.18);margin-bottom:18px}
+header h1{font-size:22px;display:flex;align-items:center;gap:10px}
+header .sub{opacity:.88;margin-top:5px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card h2{font-size:15px;margin-bottom:12px;color:#334155;display:flex;align-items:center;gap:8px;border-left:4px solid var(--primary);padding-left:10px}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.drop{flex:1;min-width:280px;border:2px dashed #cbd5e1;border-radius:10px;padding:26px;text-align:center;cursor:pointer;transition:.2s;background:#fbfdff}
+.drop:hover,.drop.drag{border-color:var(--primary);background:var(--hover)}
+.drop .big{font-size:30px;color:var(--primary)}
+.drop p{color:var(--muted);margin-top:6px;font-size:13px}
+.filelist{flex:1;min-width:280px}
+.filelist .empty{color:var(--muted);font-size:13px;padding:10px 0}
+.fitem{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:7px;background:#fff;font-size:13px}
+.fitem .name{font-weight:600}
+.fitem .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px}
+.tag.auto{background:#dbeafe;color:#1e40af}
+.tag.manual{background:#fef3c7;color:#92400e}
+.tag.product{background:#dcfce7;color:#166534}
+.tag.unknown{background:#fee2e2;color:#991b1b}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-d)}
+.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--txt)}
+.btn-ghost:hover{background:var(--hover)}
+.btn-sm{padding:5px 10px;font-size:12px}
+textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:12px;resize:vertical}
+label.lbl{font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:linear-gradient(135deg,#f8fafc,#eef2ff);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.kpi .v{font-size:18px;font-weight:700;color:var(--primary)}
+.kpi .l{font-size:11px;color:var(--muted);margin-top:2px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
+.filters .field{display:flex;flex-direction:column}
+.filters input[type=number],.filters input[type=text]{width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:4px 11px;border-radius:14px;background:var(--chip);border:1px solid var(--chip-b);color:#3730a3;font-size:12px;cursor:pointer;font-weight:600;user-select:none}
+.chip.off{background:#fff;color:var(--muted);border-color:var(--border)}
+.chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.range-wrap{display:flex;align-items:center;gap:4px}
+.range-wrap span{color:var(--muted);font-size:11px}
+.tbl-scroll{overflow:auto;max-height:680px;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+thead{position:sticky;top:0;z-index:5}
+th{background:var(--thead);color:#fff;padding:9px 10px;text-align:right;font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;border-right:1px solid #334155}
+th:first-child,.th-l{text-align:left}
+th:hover{background:#334155}
+th .arrow{opacity:.5;font-size:10px;margin-left:3px}
+th.sorted .arrow{opacity:1;color:var(--accent)}
+.th-help{display:inline-block;width:14px;height:14px;line-height:14px;text-align:center;border-radius:50%;background:rgba(255,255,255,.2);color:#94a3b8;font-size:10px;margin-left:3px;cursor:help;font-weight:bold;vertical-align:middle}
+.th-help:hover{background:rgba(255,255,255,.4);color:#fff}
+.scheme-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:8px;font-weight:600;white-space:nowrap;vertical-align:middle}
+.tag-auto{background:#dbeafe;color:#1e40af}
+.tag-manual{background:#dcfce7;color:#166534}
+.tag-asin{background:#fef3c7;color:#92400e}
+.tag-other{background:#e2e8f0;color:#475569}
+td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+td.tl{text-align:left;font-weight:600}
+tbody tr:nth-child(even){background:var(--zebra)}
+tbody tr:hover{background:var(--hover)}
+.badge-src{font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px;font-weight:600;vertical-align:middle}
+.pill{display:inline-block;padding:1px 7px;border-radius:8px;font-size:11px;font-weight:600}
+.pill-good{background:#dcfce7;color:#166534}
+.pill-bad{background:#fee2e2;color:#991b1b}
+.pill-warn{background:#fef3c7;color:#92400e}
+.pill-na{background:#f1f5f9;color:#64748b}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;justify-content:space-between}
+.toolbar .info{font-size:12px;color:var(--muted)}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.legend{font-size:11px;color:var(--muted);margin-top:8px}
+.legend b{color:var(--txt)}
+.note{font-size:12px;color:var(--muted);background:#f8fafc;border:1px dashed var(--border);border-radius:8px;padding:9px 12px;margin-top:10px}
+.collapsible{cursor:pointer}
+.coll-body{margin-top:10px}
+::-webkit-scrollbar{height:10px;width:10px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+::-webkit-scrollbar-track{background:#f1f5f9}
+/* 配置区专用样式 */
+.cfg-section{padding:14px 0;border-bottom:1px solid #f1f5f9}
+.cfg-section:last-child{border-bottom:none}
+.cfg-title{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:10px}
+.cfg-desc{font-size:11px;font-weight:400;color:#94a3b8;margin-left:6px}
+.cfg-row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.cfg-item{min-width:0}
+.cfg-inline{display:flex;align-items:center;gap:6px;margin-top:3px}
+.cfg-num{width:55px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px}
+.cfg-hint{font-size:11px;color:#94a3b8}
+.cfg-sum-ok{font-size:12px;color:var(--green);font-weight:600;white-space:nowrap}
+.cfg-tips{font-size:11px;color:#64748b;background:#f8fafc;border-radius:6px;padding:7px 10px;margin-top:8px}
+/* 示例词查看全部弹窗 */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+.modal-box{background:#fff;border-radius:12px;max-width:720px;width:100%;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.modal-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-size:14px;color:#1e293b}
+.modal-close{cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:2px 6px;border-radius:6px}
+.modal-close:hover{background:var(--hover);color:var(--txt)}
+.modal-body{padding:14px 18px;overflow:auto}
+/* AI 结果 markdown 渲染 */
+.ai-md{font-size:14px;line-height:1.75;color:#0f172a}
+.ai-md h1,.ai-md h2,.ai-md h3{margin:18px 0 10px;color:#0f172a;font-weight:700}
+.ai-md h1{font-size:18px}.ai-md h2{font-size:16px}.ai-md h3{font-size:15px}
+.ai-md p{margin:10px 0;color:#0f172a}
+.ai-md ul,.ai-md ol{margin:10px 0;padding-left:22px;color:#0f172a}
+.ai-md li{margin:5px 0}
+.ai-md code{background:#eef2ff;padding:2px 6px;border-radius:4px;font-size:12.5px;color:#1d4ed8;font-weight:600}
+.ai-md pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;overflow:auto;margin:12px 0;font-size:12.5px;line-height:1.6}
+.ai-md pre code{background:none;color:inherit;padding:0;font-weight:400}
+.ai-md strong{color:#0f172a;font-weight:700}
+.ai-md blockquote{border-left:3px solid var(--primary);padding-left:12px;color:#334155;margin:10px 0;background:#f8fafc;padding:8px 12px;border-radius:6px}
+.ai-md table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12.5px;table-layout:auto}
+.ai-md th,.ai-md td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;color:#0f172a}
+.ai-md th{background:#1e293b;color:#fff;font-weight:600;white-space:nowrap}
+.ai-md tr:nth-child(even) td{background:#f8fafc}
+.ai-md hr{border:none;border-top:1px solid #e2e8f0;margin:18px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>亚马逊词根分析工具 <a href="about/about.html" style="font-size:13px;font-weight:400;color:#94a3b8;text-decoration:none;border:1px solid #475569;padding:2px 10px;border-radius:10px;vertical-align:middle;margin-left:8px" target="_blank">关于 / 逻辑说明</a></h1>
+  <div class="sub">一、汇总报告：advertising.amazon.com/reporting 选择 【搜索词——顾客输入的带来至少1次点击的搜索词的绩效指标。】---点击【商品推广】---定制列 里面额外勾选【商品-推广的商品编号&推广的商品 SKU-Advertised product SKU】【投放方案-投放目标全选&投放方案&投放匹配类型&匹配的目标】---再选好 报告期 ---等生成完下载即可。</div>
+  <div class="sub">二、自动广告 / 手动广告 / 商品投放 的广告组 【搜索词】选择好日期范围---导出即可</div>
+</header>
+
+<!-- 上传 -->
+<div class="card">
+  <h2>1. 上传报告文件</h2>
+  <div class="row">
+    <div class="drop" id="drop">
+      <div class="big">⬆</div>
+      <p>点击或拖拽 CSV 文件到此处，可同时上传多个文件</p>
+      <input type="file" id="fileInput" multiple accept=".csv,.tsv,.txt" class="hidden">
+    </div>
+    <div class="filelist" id="filelist">
+      <div class="empty">尚未上传文件</div>
+    </div>
+  </div>
+  <div class="note">
+    <b>识别规则：</b>含「商品投放」列 → 商品投放报告；含「目标竞价」+「顾客搜索词」→ 手动广告；其余含「顾客搜索词」→ 自动广告。
+    商品投放报告的「匹配的商品」整体作为一个词根（不拆分）。自动/手动广告的「顾客搜索词」按空格与连字符拆分并过滤停用词。
+  </div>
+</div>
+
+<!-- 配置 -->
+<div class="card">
+  <h2 class="collapsible" id="cfgHead">2. 分析配置 ▸</h2>
+  <div class="coll-body hidden" id="cfgBody">
+
+    <!-- A. 基础设置 -->
+    <div class="cfg-section">
+      <div class="cfg-title">A. 基础设置 <span class="cfg-desc">表格显示和拆词时去掉的无意义词</span></div>
+      <div class="cfg-row">
+        <div class="cfg-item" style="flex:2;min-width:280px">
+          <label class="lbl">停用词（无意义、不单独投放的词）</label>
+          <textarea id="stopwords" rows="2">for the a an of to on in and with or is are be as at by from this that these those it its pack pk set piece ft inch cm w v mm</textarea>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">小数位</label>
+          <input type="number" id="decimals" value="2" min="0" max="6" style="width:90px">
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">显示选项</label>
+          <div class="chips" style="margin-top:2px">
+            <span class="chip on" id="pctToggle">百分比显示</span>
+            <span class="chip on" id="colorToggle">条件着色</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B. 词根筛选 -->
+    <div class="cfg-section">
+      <div class="cfg-title">B. 词根筛选 <span class="cfg-desc">控制哪些拆出来的词根有资格参与分析和组词</span></div>
+      <div class="cfg-grid">
+        <div class="cfg-item">
+          <label class="lbl">词根至少几个字母</label>
+          <div class="cfg-inline">
+            <input type="number" id="minLen" value="2" min="1" max="6" class="cfg-num">
+            <span class="cfg-hint">2 = 去掉 c、i 等单字母</span>
+          </div>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">去掉纯数字词根</label>
+          <div class="cfg-inline">
+            <span class="chip on" id="filterNum">开启</span>
+            <span class="cfg-hint">去掉 4、16、17 等</span>
+          </div>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">去掉规格单位词</label>
+          <div class="cfg-inline">
+            <span class="chip on" id="filterSpec">开启</span>
+            <span class="cfg-hint">去掉 ft、inch、w、mm 等</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C. 复合得分 -->
+    <div class="cfg-section">
+      <div class="cfg-title">C. 复合得分权重 <span class="cfg-desc">决定"什么词根值得组词开广告"，三者之和须=100</span></div>
+      <div class="cfg-row" style="align-items:flex-end">
+        <div class="cfg-item">
+          <label class="lbl">转化表现 <span class="cfg-hint">（ROAS好坏）</span></label>
+          <div class="cfg-inline"><input type="number" id="wPerf" value="60" min="0" max="100" class="cfg-num">%</div>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">搜索词位置 <span class="cfg-hint">（靠前=核心词）</span></label>
+          <div class="cfg-inline"><input type="number" id="wPos" value="20" min="0" max="100" class="cfg-num">%</div>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">出现频次 <span class="cfg-hint">（高频=稳定）</span></label>
+          <div class="cfg-inline"><input type="number" id="wFreq" value="20" min="0" max="100" class="cfg-num">%</div>
+        </div>
+        <div class="cfg-item"><span id="wSum" class="cfg-sum-ok">✓ 合计100</span></div>
+      </div>
+      <div class="cfg-tips">💡 转化越多权重越高 = 优先组能赚钱的词。常用配比：60/20/20（默认）· 50/30/20（测试期多看位置）· 70/20/10（利润优先）</div>
+    </div>
+
+    <!-- D. 组词池门槛 -->
+    <div class="cfg-section">
+      <div class="cfg-title">D. 组词池门槛 <span class="cfg-desc">太差或太偶然的词根不让进组词建议</span></div>
+      <div class="cfg-grid">
+        <div class="cfg-item">
+          <label class="lbl">至少出现几次</label>
+          <div class="cfg-inline">
+            <input type="number" id="minFreq" value="3" min="1" max="50" class="cfg-num">
+            <span class="cfg-hint">只出现1-2次可能是偶然</span>
+          </div>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">复合得分至少多少</label>
+          <div class="cfg-inline">
+            <input type="number" id="minScore" value="10" min="0" max="100" class="cfg-num">
+            <span class="cfg-hint">太低=转化差或位置差</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E. AI 分析 -->
+    <div class="cfg-section">
+      <div class="cfg-title">E. AI 分析 <span class="cfg-desc">填入 OpenAI 兼容 API 信息，可一键让 AI 总结数据给建议</span></div>
+      <div class="cfg-grid" style="margin-bottom:12px">
+        <div class="cfg-item">
+          <label class="lbl">API 地址</label>
+          <input type="text" id="aiApiUrl" value="https://aiapi.fonken.net/" placeholder="https://api.openai.com" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+          <span class="cfg-hint">如 https://api.openai.com 或自部署地址</span>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">模型名称</label>
+          <input type="text" id="aiModel" value="gemini-3.1-flash-lite" placeholder="gpt-4o-mini" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">密钥</label>
+          <input type="password" id="aiKey" placeholder="sk-..." style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+          <span class="cfg-hint">仅存本机localStorage，不上传任何第三方</span>
+        </div>
+        <div class="cfg-item">
+          <label class="lbl">发送Top词根数</label>
+          <div class="cfg-inline">
+            <input type="number" id="aiTopN" value="20" min="5" max="50" class="cfg-num">
+            <span class="cfg-hint">发给AI的词根条数</span>
+          </div>
+        </div>
+      </div>
+      <div class="cfg-item" style="margin-top:6px">
+        <label class="lbl">提示词（可改，自动保存）</label>
+        <textarea id="aiPrompt" rows="5" style="font-size:12px">你是资深亚马逊广告优化师。下面是卖家搜索词报告的词根分析数据（JSON）。
+请基于数据给出：
+1. 整体表现诊断（ROAS/ACOS 是否健康，主要问题在哪）
+2. 核心词根分三类：① 建议加投/提价 ② 建议降价观察 ③ 建议否定
+3. 组词建议评估（如果提供）：哪些组合值得开手动，竞价区间建议
+4. 异常发现：是否有词不匹配、创意差、流量异常等
+5. 下一步行动清单（3~5条具体可执行）
+
+要求：给具体数字依据，不要泛泛而谈。ACOS/购买率用百分比。</textarea>
+        <button class="btn btn-ghost btn-sm" id="aiPromptReset" style="margin-top:6px">恢复默认提示词</button>
+      </div>
+      <div class="cfg-tips">💡 密钥仅存本机浏览器，不会上传到任何服务器。每次点「一键问AI」会把当前筛选后的词根数据（含汇总指标）发给填写的API地址。</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 概览 -->
+<div class="card hidden" id="ovCard">
+  <h2>3. 数据概览</h2>
+  <div class="kpis" id="kpis"></div>
+  <div class="legend" id="srcLegend"></div>
+</div>
+
+<!-- 筛选 + 表格 -->
+<div class="card hidden" id="resCard">
+  <h2>4. 词根汇总表</h2>
+  <div class="toolbar">
+    <div class="info" id="resInfo"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" id="resetFilter">重置筛选</button>
+      <button class="btn btn-ghost btn-sm" id="exportCsv">导出 CSV</button>
+      <button class="btn btn-primary btn-sm" id="askAi">🤖 一键问 AI</button>
+    </div>
+  </div>
+  <div class="toolbar" style="justify-content:flex-start;gap:24px">
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost btn-sm" id="presetNeg">🔴 一键筛否定词候选</button>
+      <span class="cfg-hint">花费≥</span>
+      <input type="number" id="negCostThr" value="3" step="0.5" class="cfg-num" style="width:60px">
+      <span class="cfg-hint">且购买量=0</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost btn-sm" id="presetHarv">🟢 一键筛收割词候选</button>
+      <span class="cfg-hint">ACOS≤</span>
+      <input type="number" id="harvAcosThr" value="30" step="5" class="cfg-num" style="width:60px">
+      <span class="cfg-hint">% 且已有购买</span>
+    </div>
+  </div>
+  <!-- 站点/商品隔离（仅新格式显示） -->
+  <div class="toolbar hidden" id="siteFilter" style="justify-content:flex-start;gap:16px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <span class="lbl" style="margin:0;white-space:nowrap">站点/货币</span>
+      <div id="curChips" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span class="lbl" style="margin:0;white-space:nowrap">商品编号</span>
+      <select id="asinSelect" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;max-width:280px">
+        <option value="">全部商品</option>
+      </select>
+    </div>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div style="margin:2px 0 12px">
+    <button class="btn btn-ghost btn-sm collapsible" id="toggleRangeFilters">▸ 展开具体指标范围筛选</button>
+  </div>
+  <div class="filters hidden" id="filtersRange"></div>
+  <div class="tbl-scroll">
+    <table id="tbl">
+      <thead><tr id="thr"></tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 组词建议 -->
+<div class="card hidden" id="suggestCard">
+  <h2>5. 组词建议（含共现回查）</h2>
+  <div class="note" style="margin-bottom:12px">
+    基于<b>复合得分</b> Top 词根，自动生成组合，并回查所有「同时包含这些词根」的历史搜索词，汇总真实展示/点击/转化/ROAS。
+    默认按<b>历史ROAS降序</b>排列（真实盈利能力优先）。<b>组词得分</b>=各词根复合得分的平均值（已按词数归一化），覆盖词数越多数据越可靠。
+  </div>
+  <div class="toolbar">
+    <div class="info" id="suggestInfo"></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center">
+        <label class="lbl" style="margin:0">Top词根数</label>
+        <input type="number" id="topN" value="15" min="3" max="30" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <label class="lbl" style="margin:0">组词长度</label>
+        <select id="comboLen" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+          <option value="2-3">2~3词（大词）</option>
+          <option value="3-4" selected>3~4词</option>
+          <option value="4-5">4~5词（含长尾）</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <label class="lbl" style="margin:0">最低覆盖词数</label>
+        <input type="number" id="minHits" value="3" min="1" max="50" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <span class="muted" style="font-size:11px">4+词组合覆盖≥2也放行</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="genSuggest">生成建议</button>
+      <button class="btn btn-ghost btn-sm" id="exportSuggestCsv">导出组词建议 CSV</button>
+    </div>
+  </div>
+  <div class="tbl-scroll" style="max-height:560px">
+    <table id="suggestTbl">
+      <thead><tr id="suggestThr"></tr></thead>
+      <tbody id="suggestTb"></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<div class="modal-overlay hidden" id="modalOverlay" onClick="if(event.target===this)closeSampleModal()">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="modalTitle"></h3><span class="modal-close" onClick="closeSampleModal()">✕</span></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- AI 结果弹窗 -->
+<div class="modal-overlay hidden" id="aiOverlay" onClick="if(event.target===this)closeAiModal()">
+  <div class="modal-box" style="max-width:min(95vw,1400px);width:min(95vw,1400px)">
+    <div class="modal-head">
+      <h3 id="aiTitle">🤖 AI 分析结果</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" id="aiCopy" style="display:none">复制</button>
+        <span class="modal-close" onClick="closeAiModal()">✕</span>
+      </div>
+    </div>
+    <div class="modal-body" id="aiBody">
+      <div id="aiLoading" style="text-align:center;padding:40px 20px;color:var(--muted)">
+        <div style="font-size:28px;margin-bottom:12px">⏳</div>
+        <div>AI 分析中，请稍候...</div>
+        <div style="font-size:11px;margin-top:8px">已发送 <span id="aiDataSize">-</span> 数据到 <span id="aiEndpoint">-</span></div>
+      </div>
+      <div id="aiResult" class="ai-md" style="display:none"></div>
+      <div id="aiError" style="display:none;color:var(--red);padding:20px;white-space:pre-wrap;font-size:13px"></div>
+    </div>
+  </div>
+</div>
+
+<div align="center">
+  <script>
+/* ============ 全局状态 ============ */
+const STATE = {
+  rows:[],          // 解析后的原始行 {source,matchType,searchTerm,metrics:{...}}
+  tokens:[],        // 拆分均摊后的记录 {词根,matchType,source,...均摊指标}
+  agg:[],           // 词根汇总结果
+  filtered:[],      // 筛选后
+  sortKey:'出现次数', sortDir:'desc',
+  pctDisplay:true, colorOn:true,
+  matchFilter:new Set(),  // 空集合=全部
+  ranges:{},        // {指标:{min,max}}
+  termSearch:'',
+  suggestions:[],
+  suggestionsView:[],
+  sugSortKey:'ROAS', sugSortDir:'desc',
+  // 新格式多站点隔离
+  currencies:[],    // 所有货币列表
+  curFilter:'',     // 当前选中的货币（空=全部，但新格式默认选第一个）
+  asinFilter:'',    // 当前选中的ASIN（空=全部）
+  asinList:[],      // 当前货币下的ASIN列表
+  isV2:false,       // 是否包含新格式数据
+};
+
+/* ============ CSV 解析（处理引号/转义/换行，自动检测分隔符） ============ */
+function parseCSV(text){
+  const rows=[]; let row=[]; let cur=''; let q=false;
+  text=text.replace(/^\uFEFF/,'');
+  // 自动检测分隔符：取第一行，比较逗号和Tab数量
+  const firstLine=text.split('\n')[0]||'';
+  const commaCount=(firstLine.match(/,/g)||[]).length;
+  const tabCount=(firstLine.match(/\t/g)||[]).length;
+  const delim=tabCount>commaCount?'\t':',';
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){
+        if(text[i+1]==='"'){cur+='"';i++;}
+        else q=false;
+      } else cur+=c;
+    } else {
+      if(c==='"') q=true;
+      else if(c===delim){row.push(cur);cur='';}
+      else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}
+      else if(c==='\r'){/*skip*/}
+      else cur+=c;
+    }
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.length && r.some(x=>x.trim()!==''));
+}
+
+function toObj(rows){
+  if(!rows.length) return [];
+  const h=rows[0].map(x=>x.trim());
+  const addedIdx=h.indexOf('已添加为');
+  let lastAdded='';
+  return rows.slice(1).map(r=>{
+    const o={};
+    h.forEach((k,i)=>o[k]=r[i]!==undefined?r[i].trim():'');
+    // Forward fill: 亚马逊"关键词: xxx匹配"是分组标题行，后续数据行的"已添加为"为空
+    if(addedIdx>=0 && (o['已添加为']===''||o['已添加为']===undefined||o['已添加为']==='-')){
+      if(lastAdded) o['已添加为']=lastAdded;
+    } else if(o['已添加为']) {
+      lastAdded=o['已添加为'];
+    }
+    return o;
+  });
+}
+
+/* ============ 数字解析 ============ */
+function num(v){
+  if(v===null||v===undefined) return 0;
+  if(typeof v==='number') return v;
+  let s=String(v).replace(/,/g,'').trim();
+  if(s===''||s==='-') return 0;
+  const n=parseFloat(s);
+  return isNaN(n)?0:n;
+}
+
+/* ============ 币种无关的指标列取值 ============ */
+function pickMetric(row, base){
+  if(row[base]!==undefined) return row[base];
+  const re=new RegExp('^'+base.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\(.*\\)$');
+  for(const k in row){ if(re.test(k)) return row[k]; }
+  return undefined;
+}
+
+/* ============ 文件类型识别 ============ */
+// 列名前缀匹配（币种无关）：表头中是否存在以 base 开头、可带 (XXX) 币种后缀的列
+function hasColPrefix(headers, base){
+  if(headers.includes(base)) return true;
+  const re=new RegExp('^'+base.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\(.*\\)$');
+  return headers.some(h=>re.test(h));
+}
+function detectType(headers, sample){
+  const has=(...ks)=>ks.some(k=>headers.includes(k));
+  // 旧格式
+  if(has('商品投放')) return 'product';
+  // 手动广告：目标竞价列名可能带任意币种后缀 (USD)/(CAD)/(EUR)...
+  if(has('顾客搜索词') && hasColPrefix(headers,'目标竞价')) return 'manual';
+  if(has('顾客搜索词')) return 'auto';
+  // 广告组级 Tab 导出（多"已添加为"列，搜索词在"匹配的商品"，关键词=投放词，含目标竞价）
+  if(has('匹配的商品') && has('关键词') && hasColPrefix(headers,'目标竞价')) return 'manual_adgroup';
+  // 新格式（搜索词报告 v2）
+  if(has('搜索词')) return 'searchterm_v2';
+  return 'unknown';
+}
+
+/* ============ 新格式列名查找（列顺序无关） ============ */
+function findCol(headers, ...names){
+  for(const n of names){
+    const idx=headers.indexOf(n);
+    if(idx>=0) return idx;
+  }
+  return -1;
+}
+
+/* ============ 百分比字符串解析 "0.8000%" → 0.008 ============ */
+function parsePct(v){
+  if(typeof v==='number') return v;
+  let s=String(v||'').trim();
+  if(s==='') return 0;
+  if(s.endsWith('%')) s=s.slice(0,-1);
+  const n=parseFloat(s);
+  return isNaN(n)?0:n/100;
+}
+
+/* ============ 匹配类型标签 ============ */
+function getMatchType(type, row, headers){
+  // 新格式
+  if(type==='searchterm_v2'){
+    const matchType=row['投放匹配类型-Targeting match type']||'';
+    const scheme=row['投放方案']||'';
+    if(matchType==='EXACT') return '手动-精准';
+    if(matchType==='PHRASE') return '手动-词组';
+    if(matchType==='BROAD') return '手动-广泛';
+    if(matchType==='TARGETING_EXPRESSION_PREDEFINED'){
+      // 自动广告
+      const sm=scheme||'auto';
+      if(sm.includes('close')) return '自动-close';
+      if(sm.includes('loose')) return '自动-loose';
+      if(sm.includes('substitutes')) return '自动-substitutes';
+      if(sm.includes('complements')) return '自动-complements';
+      return '自动-'+sm;
+    }
+    if(matchType==='TARGETING_EXPRESSION'){
+      if(scheme.includes('asin=')) return 'ASIN定位';
+      if(scheme.includes('category=')) return '品类定位';
+      return '目标定位';
+    }
+    return '其他';
+  }
+  // 旧格式
+  if(type==='auto') return '自动-'+(row['关键词']||'other');
+  if(type==='manual'){
+    const a=row['已添加为']||'';
+    if(a.includes('精准')) return '手动-精准匹配';
+    if(a.includes('广泛')) return '手动-广泛匹配';
+    return '手动-扩展词';
+  }
+  if(type==='manual_adgroup'){
+    // 广告组级Tab导出：匹配类型从"已添加为"或"关键词"列推断，没有则走投放词
+    const a=row['已添加为']||'';
+    if(a.includes('精准')) return '手动-精准匹配';
+    if(a.includes('词组')) return '手动-词组匹配';
+    if(a.includes('广泛')) return '手动-广泛匹配';
+    return '手动-广告组';
+  }
+  if(type==='product'){
+    const p=row['商品投放']||'';
+    if(p.includes('asin-expanded')) return '商品-asin扩展';
+    if(p.includes('asin-targeting')||p.includes('asin="')) return '商品-asin定位';
+    return '商品-其他';
+  }
+  return '未知';
+}
+
+/* ============ 行标准化 ============ */
+function standardize(rows, type){
+  if(type==='searchterm_v2'){
+    // 新格式：列名查找，列顺序无关
+    return rows.map(row=>{
+      const searchTerm=row['搜索词']||'';
+      // 成本列名可能是"总成本"或"总成本 (USD)"
+      const costVal=num(pickMetric(row,'总成本'));
+      const salesVal=num(pickMetric(row,'销售额'));
+      const cpcVal=pickMetric(row,'CPC');
+      const acosVal=row['ACOS'];
+      const ctrVal=row['点击率'];
+      const cvrVal=row['购买率'];
+      return {
+        source:type,
+        matchType:getMatchType(type,row),
+        searchTerm:searchTerm,
+        // 新格式特有字段
+        currency:row['预算货币']||'',
+        marketplace:row['推广的商品站点-Advertised product marketplace']||'',
+        asin:row['推广的商品编号']||'',
+        scheme:row['投放方案']||'',
+        matchTarget:row['匹配的目标']||'',
+        metrics:{
+          '展示量':num(row['展示量']),
+          '点击量':num(row['点击量']),
+          '点击率':ctrVal?parsePct(ctrVal):0,
+          '总成本':costVal,
+          'CPC':cpcVal?num(cpcVal):(num(row['点击量'])>0?costVal/num(row['点击量']):0),
+          '购买量':num(row['购买量']),
+          '销售额':salesVal,
+          'ACOS':acosVal?parsePct(acosVal):(salesVal>0?costVal/salesVal:0),
+          'ROAS':salesVal>0?salesVal/costVal:0,
+          '购买率':cvrVal?parsePct(cvrVal):0,
+        }
+      };
+    });
+  }
+  // 旧格式
+  return rows.map(row=>{
+    let searchTerm='';
+    if(type==='product') searchTerm=row['匹配的商品']||'';
+    else if(type==='manual_adgroup') searchTerm=row['匹配的商品']||''; // 广告组级Tab版：搜索词在"匹配的商品"列
+    else searchTerm=row['顾客搜索词']||'';
+    return {
+      source:type,
+      matchType:getMatchType(type,row),
+      searchTerm:searchTerm,
+      currency:'',
+      marketplace:'',
+      asin:'',
+      scheme:'',
+      matchTarget:'',
+      metrics:{
+        '展示量':num(row['展示量']),
+        '点击量':num(row['点击量']),
+        '点击率':num(row['点击率']),
+        '总成本':num(pickMetric(row,'总成本')),
+        'CPC':num(pickMetric(row,'CPC')),
+        '购买量':num(row['购买量']),
+        '销售额':num(pickMetric(row,'销售额')),
+        'ACOS':num(row['ACOS']),
+        'ROAS':num(row['ROAS']),
+        '购买率':num(row['购买率']),
+      }
+    };
+  });
+}
+
+/* ============ 词根拆分（含基础过滤 + 日文字符边界拆分） ============ */
+const SPEC_WORDS=new Set(['ft','inch','cm','mm','w','v','kg','g','ml','l','oz','lb','hz']);
+
+/* 判断字符类型：1=ASCII 2=平假名 3=片假名 4=汉字/CJK 0=其他 */
+function charType(c){
+  const code=c.charCodeAt(0);
+  if(code>=0x30 && code<=0x39 || code>=0x41 && code<=0x5A || code>=0x61 && code<=0x7A) return 1; // ASCII 字母数字
+  if(code>=0x3040 && code<=0x309F) return 2; // 平假名
+  if(code>=0x30A0 && code<=0x30FF) return 3; // 片假名
+  if(code>=0x4E00 && code<=0x9FFF) return 4; // CJK 汉字
+  if(code>=0x3400 && code<=0x4DBF) return 4;  // CJK 扩展A
+  return 0;
+}
+
+/* 日文助词集合（作为额外切分点） */
+const JP_PARTICLES=new Set(['の','で','を','に','が','と','や','へ','から','まで','用','替','代']);
+
+function splitTokens(text, type, stopwords){
+  const s=String(text||'').toLowerCase();
+  if(type==='product'){
+    const t=s.trim();
+    return t?[t]:[];
+  }
+  const minLen=parseInt(document.getElementById('minLen')?.value)||2;
+  const filterNum=document.getElementById('filterNum')?.classList.contains('on');
+  const filterSpec=document.getElementById('filterSpec')?.classList.contains('on');
+
+  // 第一步：按空格/连字符/下划线粗拆
+  let parts=s.split(/[\s\-_]+/).map(x=>x.trim()).filter(Boolean);
+
+  // 第二步：对每个 part，如果包含日文字符，按字符类型边界细拆
+  const expanded=[];
+  for(const part of parts){
+    if(/[\u3040-\u30FF\u4E00-\u9FFF\u3400-\u4DBF]/.test(part)){
+      // 有日文字符，按字符类型边界拆分
+      let seg='';
+      let prevType=0;
+      for(let i=0;i<part.length;i++){
+        const c=part[i];
+        const ct=charType(c);
+        // 助词作为切分点
+        if(JP_PARTICLES.has(c) && seg){
+          expanded.push(seg);
+          expanded.push(c);
+          seg='';
+          prevType=0;
+          continue;
+        }
+        if(ct!==0 && prevType!==0 && ct!==prevType){
+          // 字符类型切换，切分
+          expanded.push(seg);
+          seg=c;
+        } else if(ct===0){
+          // 标点/符号，切分
+          if(seg){expanded.push(seg);seg='';}
+        } else {
+          seg+=c;
+        }
+        prevType=ct;
+      }
+      if(seg) expanded.push(seg);
+    } else {
+      expanded.push(part);
+    }
+  }
+  parts=expanded;
+
+  return parts.filter(t=>{
+    if(stopwords.has(t)) return false;
+    if(t.length<minLen) return false;
+    if(filterNum&&/^\d+$/.test(t)) return false;
+    if(filterSpec&&SPEC_WORDS.has(t)) return false;
+    return true;
+  });
+}
+
+/* ============ 均摊（单行→多个词根记录） ============ */
+/* 口径说明（已调整）：
+   主指标（展示量/点击量/总成本/购买量/销售额）采用「关联口径」= 完整值（不÷N），
+   反映该词根参与了多少转化/流量，符合亚马逊归因逻辑（整笔订单归给这条搜索词）。
+   均摊值（÷N）降级为 均摊xxx 参考列，仅供需要总量守恒估算时使用。
+   注意：关联口径下，同一笔订单会被多个词根各计一次，跨词根相加会重复——
+   但词根表是按词根独立决策的，不跨词根加总，故对单词根排名无害。 */
+function allocate(row, stopwords){
+  const tokens=splitTokens(row.searchTerm, row.source, stopwords);
+  const N=tokens.length;
+  if(N===0) return [];
+  const m=row.metrics;
+  const div=(v)=>v/N;
+  // 位置分：第i位得 (N-i+1) 分
+  return tokens.map((t,i)=>{
+    const posPoints=N-i; // i从0开始，第1位(i=0)得N分，末位得1分
+    return {
+      '词根':t,'matchType':row.matchType,'source':row.source,'searchTerm':row.searchTerm,
+      // 主指标：关联口径（完整值，不÷N）
+      '展示量':m['展示量'],
+      '点击量':m['点击量'],
+      '总成本':m['总成本'],
+      '购买量':m['购买量'],
+      '销售额':m['销售额'],
+      // 均摊参考列（÷N，满足总量守恒，跨词根相加不重复）
+      '均摊展示量':div(m['展示量']),
+      '均摊点击量':div(m['点击量']),
+      '均摊总成本':div(m['总成本']),
+      '均摊购买量':div(m['购买量']),
+      '均摊销售额':div(m['销售额']),
+      // 比率类不÷N，汇总时从求和量重算
+      '点击率':m['点击率'],
+      'CPC':m['CPC'],
+      'ACOS':m['ACOS'],
+      'ROAS':m['ROAS'],
+      '购买率':m['购买率'],
+      'posPoints':posPoints,
+      'posMax':N,
+    };
+  });
+}
+
+/* ============ 汇总（同词根聚合） ============ */
+const SUM_KEYS=['展示量','点击量','总成本','购买量','销售额'];
+const AVG_KEYS=['均摊展示量','均摊点击量','均摊总成本','均摊购买量','均摊销售额'];
+function aggregate(tokens){
+  const map=new Map();
+  for(const t of tokens){
+    if(!map.has(t['词根'])) map.set(t['词根'],{词根:t['词根'],records:[],sources:new Set(),matches:new Set(),searchTerms:[]});
+    const g=map.get(t['词根']);
+    g.records.push(t);
+    g.sources.add(t.source);
+    g.matches.add(t.matchType);
+    if(!g.searchTerms.includes(t.searchTerm)) g.searchTerms.push(t.searchTerm);
+  }
+  const result=[];
+  for(const g of map.values()){
+    const recs=g.records;
+    const n=recs.length;
+    const o={'词根':g.词根,'出现次数':n,'搜索词覆盖数':g.searchTerms.length,'来源数':g.sources.size,'匹配类型':Array.from(g.matches).join(' / '),'searchTerms':g.searchTerms};
+    // 主指标（关联口径）求和
+    for(const k of SUM_KEYS) o[k]=recs.reduce((s,r)=>s+r[k],0);
+    // 均摊参考列求和（÷N口径，满足总量守恒）
+    for(const k of AVG_KEYS) o[k]=recs.reduce((s,r)=>s+r[k],0);
+    // 所有比率从汇总量重算（CTR/CPC/ACOS/ROAS/购买率统一逻辑）
+    o['点击率']=o['展示量']>0?o['点击量']/o['展示量']:0;
+    o['CPC']=o['点击量']>0?o['总成本']/o['点击量']:0;
+    o['ACOS']=o['销售额']>0?o['总成本']/o['销售额']:0;
+    o['ROAS']=o['总成本']>0?o['销售额']/o['总成本']:0;
+    o['购买率']=o['点击量']>0?o['购买量']/o['点击量']:0;
+    // 新增运营指标
+    o['CPA']=o['购买量']>0?o['总成本']/o['购买量']:0;        // 每单成本
+    o['客单价']=o['购买量']>0?o['销售额']/o['购买量']:0;     // 客单价
+    // 位置分：每条记录 (posPoints/posMax)×100，同词根求平均
+    o['位置分']=recs.reduce((s,r)=>s+(r.posPoints/r.posMax)*100,0)/n;
+    // 频次权重：log平滑，避免高频词过度主导，出现1次权重0.3，10次约0.67，50次约1
+    const freqWeight=Math.min(Math.log10(n+1)/Math.log10(51),1);
+    o['freqWeight']=freqWeight;
+    // 表现分和复合得分在第二阶段计算（需要全局ROAS分位数）
+    result.push(o);
+  }
+  // 第二阶段：用全局ROAS分位数计算表现分，避免硬编码上限
+  // 只用达到「组词池门槛-至少出现几次」的词根来定分位数阈值，避免只出现1~2次的偶然高ROAS词根把阈值顶得过高，
+  // 反而把真正稳定、高频转化的词根打成不及格。定阈值的样本量不足时回退到经验阈值（亚马逊广告常见ROAS分位），
+  // 而非全量——因为全量会把1次的偶然高ROAS词算进来，反而污染阈值。
+  const minFreqForPctl=parseInt(document.getElementById('minFreq')?.value)||3;
+  let roasSample=result.filter(o=>o['出现次数']>=minFreqForPctl);
+  const roasVals=roasSample.map(o=>o['ROAS']).filter(v=>v>0).sort((a,b)=>a-b);
+  // 样本充足(≥5个有效ROAS值)用数据分位；否则用经验阈值(p67=4, p33=2)
+  const roasP67=roasVals.length>=5?roasVals[Math.floor(roasVals.length*0.67)]:4;
+  const roasP33=roasVals.length>=5?roasVals[Math.floor(roasVals.length*0.33)]:2;
+  for(const o of result){
+    // 表现分：ROAS>=p67满分，>=p33及格(50分)，线性映射
+    // 无花费(纯曝光/未点击，属于"没测过"而非"测过但差")给中性分50，不打死也不拔高；
+    // 真正花了钱但零转化(总成本>0且ROAS<=0)才判0分，代表实际表现差
+    let perfScore;
+    if(o['总成本']<=0) perfScore=50;
+    else if(o['ROAS']<=0) perfScore=0;
+    else if(o['ROAS']>=roasP67) perfScore=100;
+    else if(o['ROAS']>=roasP33) perfScore=50+(o['ROAS']-roasP33)/(roasP67-roasP33)*50;
+    else perfScore=o['ROAS']/roasP33*50;
+    o['perfScore']=perfScore;
+    // 复合得分：加权求和，权重从配置区读取
+    const wPerf=(parseInt(document.getElementById('wPerf')?.value)||60)/100;
+    const wPos=(parseInt(document.getElementById('wPos')?.value)||20)/100;
+    const wFreq=(parseInt(document.getElementById('wFreq')?.value)||20)/100;
+    o['复合得分']=perfScore*wPerf+o['位置分']*wPos+o['freqWeight']*100*wFreq;
+  }
+  return result;
+}
+
+/* ============ 指标元数据（用于表格列/筛选） ============ */
+const METRICS=[
+  {key:'位置分',label:'位置分',score:true,tip:'词根在搜索词中的位置得分(0~100)。第1位(最左)得N分(N=该搜索词的词根数)，末位得1分，线性递减。同一词根所有出现求平均。越靠前得分越高，代表买家核心意图词。例："gloves"在"men winter gloves"第3位(共3词根)→得1分'},
+  {key:'复合得分',label:'复合得分',score:true,tip:'综合评价分(0~100)。= 表现分×权重 + 位置分×权重 + 频次权重×权重。权重可在分析配置区调节(默认60/20/20)。转化(表现分)占主导，位置仅作辅助。用于组词建议的候选词根筛选'},
+  {key:'出现次数',label:'词根出现次数',int:true,src:false,tip:'该词根在所有搜索词中出现的总次数（每条搜索词计1次）。例：搜索词"gloves for men"和"winter gloves"都含gloves，则gloves词根出现次数=2'},
+  {key:'展示量',label:'展示量',oneDec:true,tip:'关联口径（不÷词根数）：该词根出现过的所有搜索词的展示量之和。反映该词根触达的流量规模。⚠️跨词根相加会重复(同一搜索词的展示量被多个词根各计1次)，仅用于单词根间横向比较，不能当总展示量用'},
+  {key:'点击量',label:'点击量',oneDec:true,tip:'关联口径（不÷词根数）：该词根出现过的所有搜索词的点击量之和。⚠️跨词根相加会重复，仅用于单词根间比较'},
+  {key:'点击率',label:'点击率',pct:true,tip:'= 点击量 ÷ 展示量。从汇总量重算，非简单平均。反映该词根触达流量的点击效率'},
+  {key:'总成本',label:'总成本',cost:true,tip:'关联口径（不÷词根数）：该词根出现过的所有搜索词的广告花费之和。⚠️跨词根相加会重复(同一笔花费被多个词根各计1次)，仅用于单词根间比较，不能当总预算用'},
+  {key:'CPC',label:'CPC',cost:true,tip:'= 总成本 ÷ 点击量。从汇总量重算，非简单平均。每次点击的平均成本，越低越好'},
+  {key:'购买量',label:'购买量',oneDec:true,tip:'关联口径（不÷词根数）：该词根出现过的所有搜索词的归因购买数之和。⚠️跨词根相加会重复(同一笔订单被多个词根各计1次)，仅用于单词根间比较'},
+  {key:'销售额',label:'销售额',cost:true,tip:'关联口径（不÷词根数）：该词根出现过的所有搜索词的归因销售额之和。符合亚马逊"整笔订单归给搜索词"的归因逻辑。⚠️跨词根相加会重复，仅用于单词根间比较，不能当总销售额用'},
+  {key:'ACOS',label:'ACOS',pct:true,tip:'= 总成本 ÷ 销售额。越低越好，0表示无花费或无销售。反映广告投入产出比，亚马逊广告常用指标'},
+  {key:'ROAS',label:'ROAS',tip:'= 销售额 ÷ 总成本。越高越好，0表示无花费或无销售。每花1元带来多少销售额'},
+  {key:'购买率',label:'购买率',pct:true,tip:'= 购买量 ÷ 点击量。即转化率，从汇总量重算。点击到购买的转化效率'},
+  {key:'CPA',label:'CPA',cost:true,tip:'= 总成本 ÷ 购买量。每促成一单的广告成本，越低越好。0表示无购买'},
+  {key:'客单价',label:'客单价',cost:true,tip:'= 销售额 ÷ 购买量。该词根关联商品的客单价。0表示无购买。可用来判断该词根吸引的买家是高客单还是低客单'},
+  {key:'均摊销售额',label:'均摊销售额',cost:true,src:false,tip:'参考列（÷词根数）：销售额按词根数均摊后的值。满足总量守恒（跨词根相加=总销售额），但会稀释核心词价值。仅供需要估算预算分摊时参考'},
+];
+
+/* ============ 渲染：文件列表 ============ */
+const fileMetas=[];
+function renderFileList(){
+  const el=document.getElementById('filelist');
+  if(!fileMetas.length){el.innerHTML='<div class="empty">尚未上传文件</div>';return;}
+  el.innerHTML=fileMetas.map((f,i)=>`
+    <div class="fitem">
+      <div>
+        <div class="name">${f.name} <span class="tag ${f.type}">${typeLabel(f.type)}</span></div>
+        <div class="meta">${f.rows} 行数据 · 匹配类型：${f.matches.join(', ')||'-'}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="removeFile(${i})">移除</button>
+    </div>`).join('');
+}
+function typeLabel(t){return {auto:'自动广告',manual:'手动广告',manual_adgroup:'手动广告(广告组)',product:'商品投放',unknown:'未知'}[t]||t;}
+function removeFile(i){fileMetas.splice(i,1);renderFileList();rebuild();}
+
+/* ============ 主流程 ============ */
+/* 编码自动检测：UTF-8 BOM > UTF-8(无BOM) > GBK > GB2312 */
+function detectAndDecode(buffer){
+  const bytes=new Uint8Array(buffer);
+  // 检查BOM
+  if(bytes.length>=3&&bytes[0]===0xEF&&bytes[1]===0xBB&&bytes[2]===0xBF){
+    return new TextDecoder('utf-8').decode(bytes.slice(3));
+  }
+  if(bytes.length>=2&&bytes[0]===0xFF&&bytes[1]===0xFE){
+    return new TextDecoder('utf-16le').decode(bytes.slice(2));
+  }
+  // 尝试UTF-8解码，检查是否有大量替换字符(乱码标志)
+  const utf8Text=new TextDecoder('utf-8',{fatal:false}).decode(bytes);
+  const replacementCount=(utf8Text.match(/\uFFFD/g)||[]).length;
+  if(replacementCount===0) return utf8Text;
+  // UTF-8有乱码，尝试GBK
+  try{
+    const gbkText=new TextDecoder('gbk').decode(bytes);
+    const gbkBad=(gbkText.match(/\uFFFD/g)||[]).length;
+    if(gbkBad<replacementCount) return gbkText;
+  }catch(e){}
+  return utf8Text; // 回退到UTF-8
+}
+function handleFiles(files){
+  const promises=[...files].map(f=>new Promise(res=>{
+    const reader=new FileReader();
+    reader.onload=()=>{res({name:f.name,text:detectAndDecode(reader.result)});};
+    reader.readAsArrayBuffer(f);
+  }));
+  Promise.all(promises).then(processTexts);
+}
+function processTexts(items){
+  for(const it of items){
+    const rows=parseCSV(it.text);
+    const objs=toObj(rows);
+    if(!objs.length) continue;
+    const type=detectType(Object.keys(objs[0]));
+    const std=standardize(objs,type);
+    const matches=[...new Set(std.map(r=>r.matchType))];
+    fileMetas.push({name:it.name,type,rows:std.length,matches,data:std});
+  }
+  renderFileList();
+  rebuild();
+}
+
+function rebuild(preserveFilters){
+  // 合并所有行
+  STATE.rows=fileMetas.flatMap(f=>f.data);
+  if(!STATE.rows.length){document.getElementById('ovCard').classList.add('hidden');document.getElementById('resCard').classList.add('hidden');document.getElementById('suggestCard').classList.add('hidden');return;}
+  document.getElementById('suggestCard').classList.remove('hidden');
+  // 清空旧建议
+  STATE.suggestions=[];
+  document.getElementById('suggestTb').innerHTML='';
+  document.getElementById('suggestInfo').textContent='点击「生成建议」基于Top词根生成组合';
+
+  // 停用词
+  const sw=new Set(document.getElementById('stopwords').value.toLowerCase().split(/\s+/).filter(Boolean));
+
+  // 检测是否包含新格式数据
+  STATE.isV2=STATE.rows.some(r=>r.source==='searchterm_v2');
+
+  // 多币种/站点隔离：收集所有货币
+  if(STATE.isV2){
+    const curSet=new Set();
+    const curRows={};
+    for(const r of STATE.rows){
+      if(r.currency){
+        curSet.add(r.currency);
+        if(!curRows[r.currency]) curRows[r.currency]=0;
+        curRows[r.currency]++;
+      }
+    }
+    STATE.currencies=[...curSet].sort((a,b)=>curRows[b]-curRows[a]);
+    const prevCur=STATE.curFilter;
+    if(!preserveFilters || !STATE.curFilter){
+      STATE.curFilter=STATE.currencies[0]||''; // 默认选第一个（数据量最多的）
+    }
+    // 如果之前选的货币不在新列表里，重置
+    if(STATE.curFilter && !STATE.currencies.includes(STATE.curFilter)){
+      STATE.curFilter=STATE.currencies[0]||'';
+    }
+    // 货币变了才清空ASIN筛选；同货币下切ASIN时保留
+    if(STATE.curFilter!==prevCur || !preserveFilters){
+      STATE.asinFilter='';
+    }
+    renderSiteFilter();
+  } else {
+    STATE.currencies=[];
+    STATE.curFilter='';
+    STATE.asinFilter='';
+    document.getElementById('siteFilter').classList.add('hidden');
+  }
+
+  // 按货币/ASIN筛选原始行
+  let filteredRows=STATE.rows;
+  if(STATE.isV2 && STATE.curFilter){
+    filteredRows=filteredRows.filter(r=>r.currency===STATE.curFilter);
+  }
+  if(STATE.isV2 && STATE.asinFilter){
+    filteredRows=filteredRows.filter(r=>r.asin===STATE.asinFilter);
+  }
+
+  // 拆分均摊（只用筛选后的行）
+  STATE.tokens=filteredRows.flatMap(r=>allocate(r,sw));
+
+  // 汇总
+  STATE.agg=aggregate(STATE.tokens);
+
+  // 初始化筛选：只有换文件（新上传/移除文件）才清空筛选；停用词/分词规则变化时保留用户已设的筛选和排序
+  const allMatches=[...new Set(filteredRows.map(r=>r.matchType))].sort();
+  STATE.allMatches=allMatches;
+  if(!preserveFilters){
+    STATE.ranges={};
+    STATE.matchFilter=new Set();
+    STATE.termSearch='';
+  }
+
+  renderOverview(allMatches, filteredRows);
+  renderFilters(allMatches);
+  applyAndRender();
+}
+
+/* 轻量重算：只影响打分（权重/最低出现次数）时用，不重新分词，天然不碰筛选面板 */
+function rescore(){
+  if(!STATE.tokens.length) return;
+  // 重新从原始行按货币/ASIN筛选后拆分（权重变化不影响分词，但需要重算aggregate）
+  const sw=new Set(document.getElementById('stopwords').value.toLowerCase().split(/\s+/).filter(Boolean));
+  let filteredRows=STATE.rows;
+  if(STATE.isV2 && STATE.curFilter) filteredRows=filteredRows.filter(r=>r.currency===STATE.curFilter);
+  if(STATE.isV2 && STATE.asinFilter) filteredRows=filteredRows.filter(r=>r.asin===STATE.asinFilter);
+  STATE.tokens=filteredRows.flatMap(r=>allocate(r,sw));
+  STATE.agg=aggregate(STATE.tokens);
+  applyAndRender();
+}
+
+/* ============ 概览 ============ */
+function renderOverview(allMatches, rows){
+  document.getElementById('ovCard').classList.remove('hidden');
+  const t=rows||STATE.rows;
+  const sum=k=>t.reduce((s,r)=>s+r.metrics[k],0);
+  const imp=sum('展示量'),cli=sum('点击量'),cost=sum('总成本'),sales=sum('销售额'),pur=sum('购买量');
+  const curLabel=STATE.isV2&&STATE.curFilter?(' ('+STATE.curFilter+')'):'';
+  const kpis=[
+    {v:t.length,l:'原始搜索词行数'},
+    {v:STATE.agg.length,l:'独立词根数'},
+    {v:fmt(imp,0),l:'总展示量'},
+    {v:fmt(cli,0),l:'总点击量'},
+    {v:fmt(cost,2),l:'总成本'+(STATE.isV2&&STATE.curFilter?'('+STATE.curFilter+')':'($)')},
+    {v:fmt(sales,2),l:'总销售额'+(STATE.isV2&&STATE.curFilter?'('+STATE.curFilter+')':'($)')},
+    {v:fmt(pur,0),l:'总购买量'},
+    {v:fmt(cost>0?sales/cost:0,2),l:'整体ROAS'+curLabel},
+    {v:((sales>0?cost/sales:0)*100).toFixed(1)+'%',l:'整体ACOS'+curLabel},
+    {v:((cli>0?pur/cli:0)*100).toFixed(1)+'%',l:'整体购买率'+curLabel},
+  ];
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('');
+  const byType={};
+  t.forEach(r=>byType[r.matchType]=(byType[r.matchType]||0)+1);
+  document.getElementById('srcLegend').innerHTML='<b>匹配类型分布：</b>'+allMatches.map(m=>`${m}(${byType[m]})`).join(' · ');
+}
+
+/* ============ 站点/商品筛选面板 ============ */
+const CUR_LABELS={USD:'美国',EUR:'欧洲',JPY:'日本',CAD:'加拿大',GBP:'英国',AUD:'澳洲',INR:'印度',AED:'阿联酋',SAR:'沙特',SGD:'新加坡'};
+function renderSiteFilter(){
+  const el=document.getElementById('siteFilter');
+  el.classList.remove('hidden');
+  // 货币chips
+  const curChips=document.getElementById('curChips');
+  let html='';
+  for(const cur of STATE.currencies){
+    const label=CUR_LABELS[cur]||cur;
+    const on=STATE.curFilter===cur?'on':'';
+    const count=STATE.rows.filter(r=>r.currency===cur).length;
+    html+=`<span class="chip ${on}" data-cur="${cur}" style="cursor:pointer">${cur}-${label} (${count})</span>`;
+  }
+  curChips.innerHTML=html;
+  curChips.querySelectorAll('.chip').forEach(c=>{
+    c.onclick=()=>{
+      STATE.curFilter=c.dataset.cur;
+      STATE.asinFilter='';
+      rebuild(true);
+    };
+  });
+  // ASIN下拉框
+  const asinSelect=document.getElementById('asinSelect');
+  const asins=[...new Set(STATE.rows.filter(r=>r.currency===STATE.curFilter && r.asin).map(r=>r.asin))].sort();
+  STATE.asinList=asins;
+  let optHtml='<option value="">全部商品</option>';
+  for(const asin of asins){
+    const count=STATE.rows.filter(r=>r.currency===STATE.curFilter && r.asin===asin).length;
+    optHtml+=`<option value="${asin}"${STATE.asinFilter===asin?' selected':''}>${asin} (${count}条)</option>`;
+  }
+  asinSelect.innerHTML=optHtml;
+  asinSelect.onchange=()=>{
+    STATE.asinFilter=asinSelect.value;
+    rebuild(true);
+  };
+}
+
+/* ============ 筛选面板 ============ */
+function renderFilters(allMatches){
+  document.getElementById('resCard').classList.remove('hidden');
+  const f=document.getElementById('filters');
+  let html='<div class="field"><label class="lbl">匹配类型</label><div class="chips" id="mtChips">';
+  html+=`<span class="chip ${STATE.matchFilter.size===0?'on':'off'}" data-mt="__all">全部</span>`;
+  html+=allMatches.map(m=>`<span class="chip ${STATE.matchFilter.has(m)?'on':'off'}" data-mt="${m}">${m}</span>`).join('');
+  html+='</div></div>';
+  html+=`<div class="field"><label class="lbl">词根搜索</label><input type="text" id="termSearch" placeholder="包含关键字..." value="${esc(STATE.termSearch)}"></div>`;
+  f.innerHTML=html;
+  f.querySelectorAll('.chip[data-mt]').forEach(c=>{
+    c.onclick=()=>{toggleMatch(c.dataset.mt);renderChips();applyAndRender();};
+  });
+  f.querySelector('#termSearch').oninput=e=>{STATE.termSearch=e.target.value.toLowerCase();applyAndRender();};
+
+  // 具体指标范围筛选——折叠区，只在展开时才看得到，减少默认占地
+  const fr=document.getElementById('filtersRange');
+  let rangeHtml='';
+  for(const m of METRICS){
+    rangeHtml+=`<div class="field"><label class="lbl">${m.label}</label><div class="range-wrap"><input type="number" data-r="${m.key}" data-b="min" placeholder="min"><span>~</span><input type="number" data-r="${m.key}" data-b="max" placeholder="max"></div></div>`;
+  }
+  fr.innerHTML=rangeHtml;
+  fr.querySelectorAll('input[data-r]').forEach(inp=>{
+    // 同步现有 STATE.ranges 里已有的值（比如权重变化重算后不清空筛选，或点了预设按钮后展开来看细节）
+    const r=STATE.ranges[inp.dataset.r];
+    inp.value=(r&&r[inp.dataset.b]!==null&&r[inp.dataset.b]!==undefined)?r[inp.dataset.b]:'';
+    inp.oninput=()=>{
+      const k=inp.dataset.r, b=inp.dataset.b;
+      const v=inp.value===''?null:parseFloat(inp.value);
+      if(!STATE.ranges[k])STATE.ranges[k]={};
+      STATE.ranges[k][b]=v;
+      applyAndRender();
+    };
+  });
+}
+function toggleMatch(m){
+  if(m==='__all'){STATE.matchFilter=new Set();}
+  else{
+    if(STATE.matchFilter.has(m))STATE.matchFilter.delete(m);
+    else STATE.matchFilter.add(m);
+  }
+}
+function renderChips(){
+  const all=document.querySelector('.chip[data-mt="__all"]');
+  all.classList.toggle('on',STATE.matchFilter.size===0);
+  document.querySelectorAll('.chip[data-mt]').forEach(c=>{
+    if(c.dataset.mt==='__all')return;
+    c.classList.toggle('on',STATE.matchFilter.has(c.dataset.mt));
+  });
+}
+
+/* ============ 筛选+排序+渲染 ============ */
+function applyAndRender(){
+  let data=STATE.agg.slice();
+  // 匹配类型筛选
+  if(STATE.matchFilter.size){
+    data=data.filter(d=>d['匹配类型'].split(' / ').some(m=>STATE.matchFilter.has(m)));
+  }
+  // 词根搜索
+  if(STATE.termSearch){
+    data=data.filter(d=>d['词根'].includes(STATE.termSearch));
+  }
+  // 范围筛选
+  for(const k in STATE.ranges){
+    const r=STATE.ranges[k];
+    if(r.min!==null&&r.min!==undefined) data=data.filter(d=>d[k]>=r.min);
+    if(r.max!==null&&r.max!==undefined) data=data.filter(d=>d[k]<=r.max);
+  }
+  // 排序
+  const key=STATE.sortKey, dir=STATE.sortDir==='desc'?-1:1;
+  data.sort((a,b)=>{const av=a[key],bv=b[key];return (typeof av==='string'?av.localeCompare(bv):av-bv)*dir;});
+  STATE.filtered=data;
+  renderTable(data);
+  document.getElementById('resInfo').textContent=`共 ${data.length} 个词根（汇总前 ${STATE.agg.length} 个）`;
+}
+
+/* ============ 表格渲染 ============ */
+function renderTable(data){
+  // 清空着色阈值缓存，基于当前数据重新计算
+  for(const k in _thrCache) delete _thrCache[k];
+  const thr=document.getElementById('thr');
+  const cols=[{key:'词根',label:'词根',left:true,tip:'拆分后的单个词根（已过滤停用词，商品投放整体作为1个词根）'},...METRICS];
+  let h='';
+  for(const c of cols){
+    const sorted=STATE.sortKey===c.key?'sorted':'';
+    const arrow=STATE.sortKey===c.key?(STATE.sortDir==='desc'?'▼':'▲'):'';
+    const tipAttr=c.tip?` title="${esc(c.tip)}"`:'';
+    const helpIcon=c.tip?'<span class="th-help" onclick="event.stopPropagation()">?</span>':'';
+    h+=`<th class="${c.left?'th-l':''} ${sorted}" data-k="${c.key}"${tipAttr}>${c.label}${helpIcon}<span class="arrow">${arrow||'⇅'}</span></th>`;
+  }
+  thr.innerHTML=h;
+  thr.querySelectorAll('th').forEach(th=>{
+    th.onclick=()=>{
+      const k=th.dataset.k;
+      if(STATE.sortKey===k) STATE.sortDir=STATE.sortDir==='desc'?'asc':'desc';
+      else {STATE.sortKey=k;STATE.sortDir='desc';}
+      applyAndRender();
+    };
+  });
+  const tb=document.getElementById('tb');
+  if(!data.length){tb.innerHTML='<tr><td colspan="18" style="text-align:center;color:var(--muted);padding:30px">无匹配数据</td></tr>';return;}
+  tb.innerHTML=data.map(d=>{
+    let tds='';
+    tds+=`<td class="tl">${esc(d['词根'])}</td>`;
+    for(const m of METRICS){
+      tds+=`<td>${fmtCell(d[m.key],m)}</td>`;
+    }
+    return `<tr>${tds}</tr>`;
+  }).join('');
+}
+
+/* ============ 格式化 ============ */
+function fmt(v,dec,isPct){
+  if(v===null||v===undefined||isNaN(v)) return '-';
+  if(dec===0){return Math.round(v).toLocaleString();}
+  return Number(v).toLocaleString(undefined,{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function fmtCell(v,m){
+  const dec=parseInt(document.getElementById('decimals').value)||2;
+  let txt;
+  if(m.int){txt=fmt(Math.round(v),0);}
+  else if(m.oneDec){txt=fmt(v,1);} // 为均摊的小数列精确保留1位小数
+  else if(m.pct){txt=STATE.pctDisplay?fmt(v*100,dec)+'%':fmt(v,dec);}
+  else if(m.cost){txt=fmt(v,dec);}
+  else if(m.score){txt=fmt(v,1);}
+  else{txt=fmt(v,dec);}
+  // 着色（自适应分位数：根据当前数据分布动态计算阈值）
+  if(STATE.colorOn){
+    const t=getColorThresholds(m.key);
+    if(t){
+      let cls='';
+      if(t.higherIsBetter){
+        // 值越高越好：>=p67绿 >=p33黄 >0红
+        if(v>=t.p67) cls='pill-good';
+        else if(v>=t.p33) cls='pill-warn';
+        else if(v>0) cls='pill-bad';
+      } else {
+        // 值越低越好：0~p33绿 p33~p67黄 >p67红；0特殊处理
+        if(v===0) cls=''; // 无数据不着色
+        else if(v<=t.p33) cls='pill-good';
+        else if(v<=t.p67) cls='pill-warn';
+        else cls='pill-bad';
+      }
+      if(cls) txt=`<span class="pill ${cls}">${txt}</span>`;
+    }
+  }
+  return txt;
+}
+/* 计算自适应分位数阈值（基于当前筛选后数据） */
+const COLOR_KEYS=['点击率','ACOS','ROAS','购买率','CPA','复合得分','位置分','客单价'];
+const _thrCache={};
+function getColorThresholds(key){
+  if(!COLOR_KEYS.includes(key)) return null;
+  if(_thrCache[key]) return _thrCache[key];
+  const vals=STATE.filtered.map(d=>d[key]).filter(v=>v>0).sort((a,b)=>a-b);
+  if(vals.length<3){ // 数据太少用固定默认值
+    const defaults={
+      '点击率':{p33:0.01,p67:0.03,higherIsBetter:true},
+      'ACOS':{p33:0.3,p67:0.6,higherIsBetter:false},
+      'ROAS':{p33:2,p67:4,higherIsBetter:true},
+      '购买率':{p33:0.05,p67:0.15,higherIsBetter:true},
+      'CPA':{p33:10,p67:20,higherIsBetter:false},
+      '复合得分':{p33:10,p67:30,higherIsBetter:true},
+      '位置分':{p33:40,p67:70,higherIsBetter:true},
+      '客单价':{p33:12,p67:20,higherIsBetter:true},
+    };
+    return defaults[key];
+  }
+  const p33=vals[Math.floor(vals.length*0.33)];
+  const p67=vals[Math.floor(vals.length*0.67)];
+  const higherIsBetter=!['ACOS','CPA'].includes(key);
+  const t={p33,p67,higherIsBetter};
+  _thrCache[key]=t;
+  return t;
+}
+function esc(s){return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
+
+/* ============ 导出 CSV ============ */
+function exportCsv(){
+  if(!STATE.filtered.length) return;
+  const cols=[{key:'词根'},...METRICS.map(m=>({key:m.key})),{key:'匹配类型'}];
+  const header=['词根',...METRICS.map(m=>m.label),'匹配类型'];
+  const lines=[header.map(csvCell).join(',')];
+  for(const d of STATE.filtered){
+    lines.push(['词根',...METRICS.map(m=>m.key),'匹配类型'].map(k=>csvCell(d[k])).join(','));
+  }
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const rnd2=Math.random().toString(36).slice(2,6);
+  const cur2=STATE.curFilter?('_'+STATE.curFilter):'';
+  const asin2=STATE.asinFilter?('_'+STATE.asinFilter):'';
+  a.download=`词根汇总${cur2}${asin2}_${new Date().toISOString().slice(0,10)}_${rnd2}.csv`;
+  a.click();
+}
+function csvCell(v){
+  if(v===null||v===undefined) return '';
+  const s=String(v);
+  return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function exportSuggestionsCsv(){
+  const data=STATE.suggestionsView&&STATE.suggestionsView.length?STATE.suggestionsView:STATE.suggestions;
+  if(!data.length){alert('还没有组词建议数据，先点「生成建议」');return;}
+  const header=['词根组合','词数','组词得分','覆盖词数','展示量','点击量','总成本','购买量','销售额','ROAS','转化词占比','全部示例搜索词(含投放方案)'];
+  const lines=[header.map(csvCell).join(',')];
+  for(const d of data){
+    lines.push([
+      d.combo.replace(/ \+ /g,' '),d.wordCount,fmt(d.comboScore,1),d.hitCount,
+      fmt(d.展示量,0),fmt(d.点击量,0),fmt(d.总成本,2),
+      fmt(d.购买量,0),fmt(d.销售额,2),fmt(d.ROAS,2),
+      `${d.convertedTerms}/${d.hitCount} (${fmt(d.转化词占比*100,1)}%)`,
+      d.allTerms.map(t=>t.term+(t.matchType?'['+t.matchType+']':'')).join(';'),
+    ].map(csvCell).join(','));
+  }
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const topN=document.getElementById('topN')?.value||'';
+  const comboLen=document.getElementById('comboLen')?.value||'';
+  const rnd=Math.random().toString(36).slice(2,6);
+  const cur=STATE.curFilter?('_'+STATE.curFilter):'';
+  const asin=STATE.asinFilter?('_'+STATE.asinFilter):'';
+  a.download=`组词建议_top${topN}_${comboLen}词${cur}${asin}_${new Date().toISOString().slice(0,10)}_${rnd}.csv`;
+  a.click();
+}
+
+/* ============ 组词建议（含共现回查） ============ */
+function generateSuggestions(){
+  const topN=parseInt(document.getElementById('topN').value)||10;
+  const minFreq=parseInt(document.getElementById('minFreq')?.value)||3;
+  const minScore=parseFloat(document.getElementById('minScore')?.value)||10;
+  // 用全部agg，先过门槛（出现次数+复合得分），再按复合得分取Top
+  const pool=STATE.agg
+    .filter(d=>d['出现次数']>=minFreq && d['复合得分']>=minScore)
+    .sort((a,b)=>b['复合得分']-a['复合得分'])
+    .slice(0,topN);
+  if(pool.length<2){alert('可用词根不足2个，无法生成组合');return;}
+
+  // 构建词根→复合得分映射
+  const scoreMap={};
+  pool.forEach(r=>scoreMap[r['词根']]=r['复合得分']);
+
+  // 基于所有原始行的词根集合，建立 搜索词→词根数组 映射（用于共现回查）
+  const STOP=new Set(document.getElementById('stopwords').value.toLowerCase().split(/\s+/).filter(Boolean));
+  const termTokens=[]; // {term, tokens:Set, metrics, matchType, scheme}
+  for(const row of STATE.rows){
+    // 只用当前货币/ASIN筛选后的行
+    if(STATE.isV2 && STATE.curFilter && row.currency!==STATE.curFilter) continue;
+    if(STATE.isV2 && STATE.asinFilter && row.asin!==STATE.asinFilter) continue;
+    const toks=splitTokens(row.searchTerm, row.source, STOP);
+    if(toks.length<2) continue;
+    termTokens.push({term:row.searchTerm, tokens:new Set(toks), m:row.metrics, matchType:row.matchType, scheme:row.scheme||''});
+  }
+
+  // 生成minLen~maxLen词组合
+  // 原逻辑是对 Top词根池 做纯数学组合（C(topN,2..maxLen)），生成完了再逐个去和所有搜索词比对共现——
+  // topN和maxLen稍大就是几十万级组合，报告一大浏览器会卡死，而且绝大多数组合根本没在任何真实搜索词里出现过。
+  // 改成反过来：直接遍历每条真实搜索词，取它的分词集合和Top词根池的交集，只在这个交集里生成子集——
+  // 这样生成的组合天然保证「至少有1条真实搜索词命中」，计算量只和报告行数、单条搜索词长度有关，不会指数爆炸。
+  const comboLenVal=document.getElementById('comboLen').value;
+  const [cMinLen,cMaxLen]=comboLenVal.split('-').map(Number);
+  const poolSet=new Set(pool.map(r=>r['词根']));
+  // 词根→位置分映射（用于组合内词根按位置分排序，使组合显示更符合买家搜索习惯）
+  const posScoreMap={};
+  pool.forEach(r=>posScoreMap[r['词根']]=r['位置分']||0);
+  const comboMap=new Map(); // key(词已排序拼接) -> {comboArr, hits:[]}
+  for(const t of termTokens){
+    // 交集内按位置分降序排列，位置分高的排前面
+    const inter=[...t.tokens].filter(w=>poolSet.has(w)).sort((a,b)=>(posScoreMap[b]||0)-(posScoreMap[a]||0));
+    if(inter.length<cMinLen) continue;
+    const m=Math.min(cMaxLen,inter.length);
+    // 在交集内生成cMinLen~m词子集
+    (function genSub(start,arr){
+      if(arr.length>=cMinLen){
+        const key=arr.join('\u0001');
+        if(!comboMap.has(key)) comboMap.set(key,{comboArr:[...arr],hits:[]});
+        comboMap.get(key).hits.push(t);
+      }
+      if(arr.length>=m) return;
+      for(let i=start;i<inter.length;i++){
+        arr.push(inter[i]);
+        genSub(i+1,arr);
+        arr.pop();
+      }
+    })(0,[]);
+  }
+
+  // 汇总每个组合的真实共现指标
+  const minHits=parseInt(document.getElementById('minHits').value)||1;
+  const results=[];
+  for(const {comboArr:combo,hits} of comboMap.values()){
+    // 覆盖门槛弹性化：4+词组合覆盖≥2也放行
+    const wordCount=combo.length;
+    const hitThreshold=(wordCount>=4)?Math.min(minHits,2):minHits;
+    if(hits.length<hitThreshold) continue;
+    // 汇总共现搜索词的真实指标
+    const sum=(k)=>hits.reduce((s,h)=>s+h.m[k],0);
+    const imp=sum('展示量'),cli=sum('点击量'),cost=sum('总成本'),pur=sum('购买量'),sales=sum('销售额');
+    const roas=cost>0?sales/cost:0;
+    // 转化词占比=有购买的搜索词数 ÷ 覆盖词数（不受单条展示量大小影响，比购买率更有参考意义）
+    const convertedTerms=hits.filter(h=>h.m['购买量']>0).length;
+    const convertRatio=hits.length>0?convertedTerms/hits.length:0;
+    // 组词得分=各词根复合得分的平均值（按词数归一化，避免长词虚高）
+    const comboScore=combo.reduce((s,w)=>s+(scoreMap[w]||0),0)/combo.length;
+    results.push({
+      combo:combo.join(' + '),
+      comboArr:combo,
+      wordCount:wordCount,
+      comboScore:comboScore,
+      hitCount:hits.length,
+      展示量:imp,点击量:cli,总成本:cost,
+      购买量:pur,销售额:sales,ROAS:roas,
+      convertedTerms:convertedTerms,
+      转化词占比:convertRatio,
+      sampleTerms:hits.slice(0,3).map(h=>({term:h.term,scheme:h.scheme,matchType:h.matchType})),
+      allTerms:hits.map(h=>({term:h.term,展示量:h.m['展示量'],点击量:h.m['点击量'],总成本:h.m['总成本'],购买量:h.m['购买量'],销售额:h.m['销售额'],scheme:h.scheme,matchType:h.matchType})),
+    });
+  }
+  // 排序：综合分优先（盈利×流量兼顾），覆盖词数辅助，组词得分兜底
+  // 综合分 = ROAS × log10(展示量+1)，避免"高ROAS但只有2条词、展示量50"的小样本组合排在前面
+  // 无花费或无展示的组合综合分为0，自然靠后
+  for(const r of results){
+    r.综合分=r.ROAS>0&&r.展示量>0 ? r.ROAS*Math.log10(r.展示量+1) : 0;
+  }
+  results.sort((a,b)=>{
+    if(b.综合分!==a.综合分) return b.综合分-a.综合分;
+    if(b.hitCount!==a.hitCount) return b.hitCount-a.hitCount;
+    return b.comboScore-a.comboScore;
+  });
+  STATE.suggestions=results;
+  renderSuggestions(results);
+}
+
+function renderSuggestions(data){
+  const thr=document.getElementById('suggestThr');
+  const tb=document.getElementById('suggestTb');
+  const cols=[
+    {k:'combo',l:'词根组合',left:true,tip:'由Top词根组合而成的候选广告词'},
+    {k:'wordCount',l:'词数',int:true,tip:'该组合包含的词根数量。2~3词偏大词流量大，4~5词偏长尾转化更精准'},
+    {k:'comboScore',l:'组词得分',score:true,tip:'= 该组合中各词根复合得分的平均值（已按词数归一化）。2词和5词在同一尺度比较，不会因词多而虚高'},
+    {k:'hitCount',l:'覆盖词数',int:true,tip:'历史搜索词中同时包含该组合所有词根的搜索词数量。越多说明该组合越有真实需求支撑，数据越可靠'},
+    {k:'展示量',l:'展示量',int:true,tip:'所有共现搜索词的展示量之和（真实值，非均摊）'},
+    {k:'点击量',l:'点击量',int:true,tip:'所有共现搜索词的点击量之和（真实值，非均摊）'},
+    {k:'总成本',l:'总成本',cost:true,tip:'所有共现搜索词的广告花费之和（真实值，非均摊）'},
+    {k:'购买量',l:'购买量',int:true,tip:'所有共现搜索词的归因购买数之和（真实值，非均摊）'},
+    {k:'销售额',l:'销售额',cost:true,tip:'所有共现搜索词的归因销售额之和（真实值，非均摊）'},
+    {k:'综合分',l:'综合分',score:true,tip:'= ROAS × log10(展示量+1)。兼顾盈利能力和流量规模，避免"高ROAS但只有2条词、展示量50"的小样本组合排在前面。默认按此列降序'},
+    {k:'ROAS',l:'ROAS',tip:'= 销售额 ÷ 总成本。基于共现搜索词真实汇总。反映该组合的历史盈利能力，点表头可单独按此列排'},
+    {k:'转化词占比',l:'转化词占比',pct:true,tip:'= 有购买的搜索词数 ÷ 覆盖词数。回答"这个组合下有多少比例的搜索词能带来转化"，不受单条展示量大小影响，比购买率更有参考意义'},
+    {k:'sample',l:'示例搜索词',left:true,tip:'同时包含该组合所有词根的真实搜索词示例（最多展示3个）'},
+  ];
+  let h='';
+  for(const c of cols){
+    const tipAttr=c.tip?` title="${esc(c.tip)}"`:'';
+    const helpIcon=c.tip?'<span class="th-help" onclick="event.stopPropagation()">?</span>':'';
+    h+=`<th class="${c.left?'th-l':''}" data-k="${c.k}"${tipAttr}>${c.l}${helpIcon}${c.k==='comboScore'||c.k==='综合分'||c.k==='hitCount'||c.int||c.pct||c.cost?'<span class="arrow">⇅</span>':''}</th>`;
+  }
+  thr.innerHTML=h;
+  // 排序绑定
+  thr.querySelectorAll('th').forEach(th=>{
+    th.onclick=()=>{
+      const k=th.dataset.k;
+      if(STATE.sugSortKey===k) STATE.sugSortDir=STATE.sugSortDir==='desc'?'asc':'desc';
+      else {STATE.sugSortKey=k;STATE.sugSortDir='desc';}
+      sortAndRenderSuggest();
+    };
+  });
+  sortAndRenderSuggest();
+}
+
+function sortAndRenderSuggest(){
+  const data=STATE.suggestions.slice();
+  if(STATE.sugSortKey){
+    const k=STATE.sugSortKey, dir=STATE.sugSortDir==='desc'?-1:1;
+    data.sort((a,b)=>{
+      let av,bv;
+      if(k==='combo'){av=a.combo;bv=b.combo;return av.localeCompare(bv)*dir;}
+      if(k==='sample'){av=a.sampleTerms.map(s=>s.term).join(',');bv=b.sampleTerms.map(s=>s.term).join(',');return av.localeCompare(bv)*dir;}
+      if(k==='comboScore'){av=a.comboScore;bv=b.comboScore;}
+      else if(k==='hitCount'){av=a.hitCount;bv=b.hitCount;}
+      else if(k==='wordCount'){av=a.wordCount;bv=b.wordCount;}
+      else {av=a[k]||0;bv=b[k]||0;}
+      return (av-bv)*dir;
+    });
+  }
+  const tb=document.getElementById('suggestTb');
+  const dec=parseInt(document.getElementById('decimals').value)||2;
+  const pct=(v)=>STATE.pctDisplay?fmt(v*100,dec)+'%':fmt(v,dec);
+  STATE.suggestionsView=data; // 供「查看全部示例词」弹窗和导出CSV按当前排序引用
+  if(!data.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:30px">无共现数据的组合</td></tr>';return;}
+  // 投放方案标签渲染
+  function schemeTag(scheme,matchType){
+    if(!scheme && !matchType) return '';
+    let label='',cls='';
+    if(matchType && matchType.startsWith('自动-')){label=matchType;cls='tag-auto';}
+    else if(matchType && matchType.startsWith('手动-')){label=matchType;cls='tag-manual';}
+    else if(matchType==='ASIN定位'||matchType==='品类定位'||matchType==='目标定位'){label=matchType;cls='tag-asin';}
+    else if(scheme && scheme.length>0 && scheme!==matchType){label=scheme.length>20?scheme.slice(0,18)+'..':scheme;cls='tag-other';}
+    if(!label) return '';
+    return ` <span class="scheme-tag ${cls}">${esc(label)}</span>`;
+  }
+  tb.innerHTML=data.map((d,i)=>{
+    let roasPill=d.ROAS>=4?'pill-good':d.ROAS>=2?'pill-warn':d.ROAS>0?'pill-bad':'';
+    let convPill=d.转化词占比>=0.5?'pill-good':d.转化词占比>=0.2?'pill-warn':'pill-bad';
+    let scorePill=d.comboScore>=60?'pill-good':d.comboScore>=30?'pill-warn':'pill-bad';
+    const color=STATE.colorOn;
+    const moreLink=d.allTerms.length>3?` <a href="javascript:void(0)" onclick="openSampleModal(${i})" style="color:var(--primary);font-weight:600">查看全部(${d.allTerms.length})</a>`:'';
+    const sampleHtml=d.sampleTerms.map(s=>esc(s.term)+schemeTag(s.scheme,s.matchType)).join('<br>');
+    return `<tr>
+      <td class="tl"><b>${esc(d.combo)}</b></td>
+      <td>${d.wordCount}</td>
+      <td>${color?`<span class="pill ${scorePill}">${fmt(d.comboScore,1)}</span>`:fmt(d.comboScore,1)}</td>
+      <td>${d.hitCount}</td>
+      <td>${fmt(d.展示量,0)}</td>
+      <td>${fmt(d.点击量,0)}</td>
+      <td>${fmt(d.总成本,dec)}</td>
+      <td>${fmt(d.购买量,0)}</td>
+      <td>${fmt(d.销售额,dec)}</td>
+      <td>${color?`<span class="pill ${roasPill}">${fmt(d.ROAS,dec)}</span>`:fmt(d.ROAS,dec)}</td>
+      <td>${color?`<span class="pill ${convPill}">${pct(d.转化词占比)} (${d.convertedTerms}/${d.hitCount})</span>`:`${pct(d.转化词占比)} (${d.convertedTerms}/${d.hitCount})`}</td>
+      <td class="tl" style="max-width:320px;font-size:12px;line-height:1.8">
+        ${sampleHtml}${moreLink}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('suggestInfo').textContent=`共 ${data.length} 个有效组合（有共现搜索词支撑）`;
+}
+
+/* ============ 示例搜索词 - 查看全部弹窗 ============ */
+function openSampleModal(i){
+  const d=STATE.suggestionsView[i];
+  if(!d) return;
+  const dec=parseInt(document.getElementById('decimals').value)||2;
+  function schemeTag(scheme,matchType){
+    if(!scheme && !matchType) return '';
+    let label='';
+    if(matchType && (matchType.startsWith('自动-')||matchType.startsWith('手动-')||matchType.includes('定位'))) label=matchType;
+    else if(scheme && scheme.length>0) label=scheme.length>30?scheme.slice(0,28)+'..':scheme;
+    if(!label) return '';
+    return ` <span style="font-size:11px;background:#e2e8f0;padding:1px 6px;border-radius:8px;color:#475569">${esc(label)}</span>`;
+  }
+  const rows=d.allTerms.map(t=>`<tr>
+    <td class="tl">${esc(t.term)}${schemeTag(t.scheme,t.matchType)}</td>
+    <td>${fmt(t.展示量,0)}</td>
+    <td>${fmt(t.点击量,0)}</td>
+    <td>${fmt(t.总成本,dec)}</td>
+    <td>${fmt(t.购买量,0)}</td>
+    <td>${fmt(t.销售额,dec)}</td>
+  </tr>`).join('');
+  document.getElementById('modalTitle').textContent=`「${d.combo}」命中的全部 ${d.allTerms.length} 条搜索词`;
+  document.getElementById('modalBody').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="background:var(--thead);color:#fff">
+      <th class="th-l" style="padding:8px 10px;text-align:left">搜索词</th>
+      <th style="padding:8px 10px">展示量</th><th style="padding:8px 10px">点击量</th>
+      <th style="padding:8px 10px">总成本</th><th style="padding:8px 10px">购买量</th><th style="padding:8px 10px">销售额</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function closeSampleModal(){document.getElementById('modalOverlay').classList.add('hidden');}
+
+/* ============ 事件绑定 ============ */
+const drop=document.getElementById('drop');
+const fileInput=document.getElementById('fileInput');
+drop.onclick=()=>fileInput.click();
+fileInput.onchange=e=>{if(e.target.files.length)handleFiles(e.target.files);fileInput.value='';};
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
+drop.ondragleave=()=>drop.classList.remove('drag');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files);};
+
+document.getElementById('cfgHead').onclick=()=>{
+  const b=document.getElementById('cfgBody');
+  b.classList.toggle('hidden');
+  document.getElementById('cfgHead').textContent='2. 分析配置 '+(b.classList.contains('hidden')?'▸':'▾');
+};
+document.getElementById('pctToggle').onclick=function(){
+  STATE.pctDisplay=!STATE.pctDisplay;
+  this.classList.toggle('on',STATE.pctDisplay);
+  renderTable(STATE.filtered);
+};
+document.getElementById('colorToggle').onclick=function(){
+  STATE.colorOn=!STATE.colorOn;
+  this.classList.toggle('on',STATE.colorOn);
+  renderTable(STATE.filtered);
+};
+document.getElementById('resetFilter').onclick=()=>{
+  STATE.matchFilter=new Set();STATE.ranges={};STATE.termSearch='';
+  document.querySelectorAll('input[data-r]').forEach(i=>i.value='');
+  const ts=document.getElementById('termSearch');if(ts)ts.value='';
+  renderChips();applyAndRender();
+};
+document.getElementById('exportCsv').onclick=exportCsv;
+function expandRangeFilters(){
+  const b=document.getElementById('filtersRange');
+  b.classList.remove('hidden');
+  document.getElementById('toggleRangeFilters').textContent='▾ 收起具体指标范围筛选';
+}
+document.getElementById('presetNeg').onclick=()=>{
+  const c=parseFloat(document.getElementById('negCostThr').value)||3;
+  STATE.matchFilter=new Set();STATE.termSearch='';
+  const ts=document.getElementById('termSearch');if(ts)ts.value='';
+  STATE.ranges={'总成本':{min:c,max:null},'购买量':{min:null,max:0}};
+  document.querySelectorAll('input[data-r]').forEach(inp=>{
+    const r=STATE.ranges[inp.dataset.r];
+    inp.value=(r&&r[inp.dataset.b]!==null&&r[inp.dataset.b]!==undefined)?r[inp.dataset.b]:'';
+  });
+  renderChips();expandRangeFilters();applyAndRender();
+};
+document.getElementById('presetHarv').onclick=()=>{
+  const a=(parseFloat(document.getElementById('harvAcosThr').value)||30)/100;
+  STATE.matchFilter=new Set();STATE.termSearch='';
+  const ts=document.getElementById('termSearch');if(ts)ts.value='';
+  STATE.ranges={'ACOS':{min:null,max:a},'购买量':{min:1,max:null}};
+  document.querySelectorAll('input[data-r]').forEach(inp=>{
+    const r=STATE.ranges[inp.dataset.r];
+    inp.value=(r&&r[inp.dataset.b]!==null&&r[inp.dataset.b]!==undefined)?r[inp.dataset.b]:'';
+  });
+  renderChips();expandRangeFilters();applyAndRender();
+};
+document.getElementById('genSuggest').onclick=generateSuggestions;
+document.getElementById('exportSuggestCsv').onclick=exportSuggestionsCsv;
+document.getElementById('stopwords').oninput=()=>rebuild(true);
+document.getElementById('decimals').onchange=()=>renderTable(STATE.filtered);
+document.getElementById('minFreq').oninput=()=>rescore(); // 只影响ROAS分位数阈值和组词池门槛，不影响分词，走轻量重算，不碰筛选状态
+// 权重校验
+function checkWeightSum(){
+  const p=parseInt(document.getElementById('wPerf').value)||0;
+  const o=parseInt(document.getElementById('wPos').value)||0;
+  const f=parseInt(document.getElementById('wFreq').value)||0;
+  const sum=p+o+f;
+  const el=document.getElementById('wSum');
+  if(sum===100){el.textContent='✓ 合计100';el.className='cfg-sum-ok';el.style.color='var(--green)';}
+  else{el.textContent='✗ 合计'+sum+'，须=100';el.className='cfg-sum-ok';el.style.color='var(--red)';}
+}
+['wPerf','wPos','wFreq'].forEach(id=>{
+  document.getElementById(id).oninput=()=>{checkWeightSum();rescore();};
+});
+// 词根过滤规则切换（会改变分词结果，需要重新分词，但保留筛选状态）
+document.getElementById('filterNum').onclick=function(){this.classList.toggle('on');rebuild(true);};
+document.getElementById('filterSpec').onclick=function(){this.classList.toggle('on');rebuild(true);};
+document.getElementById('minLen').onchange=()=>rebuild(true);
+document.getElementById('toggleRangeFilters').onclick=function(){
+  const b=document.getElementById('filtersRange');
+  b.classList.toggle('hidden');
+  this.textContent=(b.classList.contains('hidden')?'▸ 展开':'▾ 收起')+'具体指标范围筛选';
+};
+
+/* ============ AI 分析 ============ */
+const AI_DEFAULT_PROMPT=`你是资深亚马逊广告优化师。下面是卖家搜索词报告的词根分析数据（JSON）。
+请基于数据给出：
+1. 整体表现诊断（ROAS/ACOS 是否健康，主要问题在哪）
+2. 核心词根分三类：① 建议加投/提价 ② 建议降价观察 ③ 建议否定
+3. 组词建议评估（如果提供）：哪些组合值得开手动，竞价区间建议
+4. 异常发现：是否有词不匹配、创意差、流量异常等
+5. 下一步行动清单（3~5条具体可执行）
+
+要求：给具体数字依据，不要泛泛而谈。ACOS/购买率用百分比。`;
+
+// 收集当前筛选后的数据，组织成结构化 JSON 给 AI
+function collectAiData(){
+  const data=STATE.filtered;
+  const topN=parseInt(document.getElementById('aiTopN')?.value)||20;
+  // 总览
+  const summary={
+    文件数: fileMetas.length,
+    报告类型: fileMetas.map(f=>typeLabel(f.type)),
+    站点货币: STATE.curFilter||'全部',
+    商品ASIN: STATE.asinFilter||'全部',
+    词根总数: STATE.agg.length,
+    当前筛选词根数: data.length,
+  };
+  // 汇总指标
+  const totals=data.reduce((s,d)=>{
+    s.展示量+=d['展示量']||0; s.点击量+=d['点击量']||0;
+    s.总成本+=d['总成本']||0; s.销售额+=d['销售额']||0;
+    s.购买量+=d['购买量']||0; return s;
+  },{展示量:0,点击量:0,总成本:0,销售额:0,购买量:0});
+  totals.整体ROAS=totals.总成本>0?+(totals.销售额/totals.总成本).toFixed(2):0;
+  totals.整体ACOS=totals.销售额>0?+(totals.总成本/totals.销售额*100).toFixed(1)+'%':'-';
+  totals.整体CTR=totals.展示量>0?+(totals.点击量/totals.展示量*100).toFixed(2)+'%':'-';
+  totals.整体购买率=totals.点击量>0?+(totals.购买量/totals.点击量*100).toFixed(2)+'%':'-';
+  totals.整体CPC=totals.点击量>0?+(totals.总成本/totals.点击量).toFixed(2):0;
+  // Top 词根（按展示量降序取前N）
+  const topRoots=data.slice().sort((a,b)=>(b['展示量']||0)-(a['展示量']||0)).slice(0,topN).map(d=>({
+    词根:d['词根'],
+    出现次数:d['出现次数'],
+    位置分:+(d['位置分']||0).toFixed(1),
+    复合得分:+(d['复合得分']||0).toFixed(1),
+    展示量:Math.round(d['展示量']||0),
+    点击量:Math.round(d['点击量']||0),
+    点击率:d['展示量']>0?+(d['点击量']/d['展示量']*100).toFixed(2)+'%':'-',
+    CPC:+(d['CPC']||0).toFixed(2),
+    总成本:+(d['总成本']||0).toFixed(2),
+    销售额:+(d['销售额']||0).toFixed(2),
+    购买量:+(d['购买量']||0).toFixed(1),
+    ACOS:d['销售额']>0?+(d['总成本']/d['销售额']*100).toFixed(1)+'%':'-',
+    ROAS:+(d['ROAS']||0).toFixed(2),
+    购买率:d['点击量']>0?+(d['购买量']/d['点击量']*100).toFixed(2)+'%':'-',
+    CPA:+(d['CPA']||0).toFixed(2),
+    客单价:+(d['客单价']||0).toFixed(2),
+    匹配类型:d['匹配类型'],
+  }));
+  // 极端值词根
+  const wasteRoots=data.filter(d=>(d['总成本']||0)>=1&&(d['购买量']||0)===0).sort((a,b)=>(b['总成本']||0)-(a['总成本']||0)).slice(0,10).map(d=>({词根:d['词根'],总成本:+d['总成本'].toFixed(2),展示量:Math.round(d['展示量']||0),点击量:Math.round(d['点击量']||0),匹配类型:d['匹配类型']}));
+  const bestRoots=data.filter(d=>(d['ROAS']||0)>0&&(d['展示量']||0)>0).sort((a,b)=>(b['ROAS']||0)-(a['ROAS']||0)).slice(0,10).map(d=>({词根:d['词根'],ROAS:+d['ROAS'].toFixed(2),销售额:+d['销售额'].toFixed(2),展示量:Math.round(d['展示量']||0),匹配类型:d['匹配类型']}));
+  const lowCtrRoots=data.filter(d=>(d['展示量']||0)>=100).sort((a,b)=>(a['点击量']/Math.max(1,a['展示量']))-(b['点击量']/Math.max(1,b['展示量']))).slice(0,10).map(d=>({词根:d['词根'],展示量:Math.round(d['展示量']||0),点击率:+(d['点击量']/Math.max(1,d['展示量'])*100).toFixed(2)+'%',点击量:Math.round(d['点击量']||0),匹配类型:d['匹配类型']}));
+  // 组词建议（若已生成）
+  let suggestions=null;
+  if(STATE.suggestions&&STATE.suggestions.length){
+    suggestions=STATE.suggestions.slice(0,10).map(s=>({
+      组合:s.combo,
+      词数:s.wordCount,
+      综合分:+(s.综合分||0).toFixed(2),
+      组词得分:+(s.comboScore||0).toFixed(1),
+      覆盖词数:s.hitCount,
+      展示量:Math.round(s['展示量']||0),
+      总成本:+(s['总成本']||0).toFixed(2),
+      销售额:+(s['销售额']||0).toFixed(2),
+      ROAS:+(s['ROAS']||0).toFixed(2),
+      转化词占比:s.hitCount>0?+(s.convertedTerms/s.hitCount*100).toFixed(1)+'%':'-',
+    }));
+  }
+  return {summary,totals,topRoots,wasteRoots,bestRoots,lowCtrRoots,suggestions};
+}
+
+// 极简 markdown 渲染（不引外部库）
+function renderMd(md){
+  if(!md) return '';
+  let h=md;
+  // 代码块
+  h=h.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>`<pre><code>${esc(code.trim())}</code></pre>`);
+  // 转义剩余 HTML
+  h=h.replace(/`([^`]+)`/g,(m,c)=>`<code>${esc(c)}</code>`);
+  // 标题
+  h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  // 分割线
+  h=h.replace(/^---$/gm,'<hr>');
+  // 引用
+  h=h.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  // 粗体/斜体
+  h=h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  // 表格
+  const lines=h.split('\n');
+  let out=[],inTable=false,tableRows=[];
+  for(const line of lines){
+    if(/^\|(.+\|)+\s*$/.test(line.trim())){
+      const cells=line.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      if(cells.every(c=>/^[-:]+$/.test(c))){continue;} // 分隔行
+      tableRows.push(cells);
+      inTable=true;
+    } else {
+      if(inTable&&tableRows.length){
+        let t='<table><thead><tr>'+tableRows[0].map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+        for(let i=1;i<tableRows.length;i++) t+='<tr>'+tableRows[i].map(c=>`<td>${c}</td>`).join('')+'</tr>';
+        t+='</tbody></table>';
+        out.push(t); tableRows=[]; inTable=false;
+      }
+      out.push(line);
+    }
+  }
+  if(inTable&&tableRows.length){
+    let t='<table><thead><tr>'+tableRows[0].map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+    for(let i=1;i<tableRows.length;i++) t+='<tr>'+tableRows[i].map(c=>`<td>${c}</td>`).join('')+'</tr>';
+    t+='</tbody></table>';
+    out.push(t);
+  }
+  h=out.join('\n');
+  // 列表
+  h=h.replace(/(?:^|\n)((?:\s*[-*] .+\n?)+)/g,(m,list)=>{
+    const items=list.trim().split('\n').map(l=>l.replace(/^\s*[-*] /,'')).map(l=>`<li>${l}</li>`).join('');
+    return `\n<ul>${items}</ul>`;
+  });
+  h=h.replace(/(?:^|\n)((?:\s*\d+\. .+\n?)+)/g,(m,list)=>{
+    const items=list.trim().split('\n').map(l=>l.replace(/^\s*\d+\. /,'')).map(l=>`<li>${l}</li>`).join('');
+    return `\n<ol>${items}</ol>`;
+  });
+  // 段落（连续非标签行）
+  h=h.split('\n\n').map(p=>{
+    if(/^\s*<(h\d|ul|ol|pre|blockquote|table|hr)/.test(p.trim())) return p;
+    if(p.trim()==='') return '';
+    return `<p>${p.trim().replace(/\n/g,'<br>')}</p>`;
+  }).join('\n');
+  return h;
+}
+
+function showAiLoading(dataSize,endpoint){
+  document.getElementById('aiLoading').style.display='block';
+  document.getElementById('aiResult').style.display='none';
+  document.getElementById('aiError').style.display='none';
+  document.getElementById('aiCopy').style.display='none';
+  document.getElementById('aiDataSize').textContent=dataSize;
+  document.getElementById('aiEndpoint').textContent=endpoint;
+  document.getElementById('aiOverlay').classList.remove('hidden');
+}
+function showAiResult(text){
+  document.getElementById('aiLoading').style.display='none';
+  const el=document.getElementById('aiResult');
+  el.innerHTML=renderMd(text);
+  el.style.display='block';
+  document.getElementById('aiCopy').style.display='inline-flex';
+  document.getElementById('aiCopy').onclick=async()=>{
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText&&window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+      }else{
+        const ta=document.createElement('textarea');
+        ta.value=text;ta.style.cssText='position:fixed;left:-9999px;top:0';
+        document.body.appendChild(ta);ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      const btn=document.getElementById('aiCopy');
+      const orig=btn.textContent;btn.textContent='✓ 已复制';
+      setTimeout(()=>{btn.textContent=orig;},1500);
+    }catch(e){
+      alert('复制失败，请手动选择文本复制');
+    }
+  };
+}
+function showAiError(msg){
+  document.getElementById('aiLoading').style.display='none';
+  const el=document.getElementById('aiError');
+  el.textContent=msg;
+  el.style.display='block';
+}
+function closeAiModal(){document.getElementById('aiOverlay').classList.add('hidden');}
+
+async function askAi(){
+  // 校验配置
+  const apiUrl=(document.getElementById('aiApiUrl')?.value||'').trim().replace(/\/+$/,'');
+  const model=(document.getElementById('aiModel')?.value||'').trim();
+  const key=(document.getElementById('aiKey')?.value||'').trim();
+  if(!apiUrl){alert('请先在「分析配置 - E. AI 分析」填写 API 地址');return;}
+  if(!model){alert('请先填写模型名称');return;}
+  if(!key){alert('请先填写密钥');return;}
+  if(!STATE.filtered.length){alert('没有词根数据，请先上传报告');return;}
+  // 收集数据
+  const payload=collectAiData();
+  const prompt=document.getElementById('aiPrompt')?.value||AI_DEFAULT_PROMPT;
+  const userContent=`以下是亚马逊广告搜索词词根分析数据（JSON格式），请分析：\n\n\`\`\`json\n${JSON.stringify(payload,null,2)}\n\`\`\``;
+  const dataSize=(new Blob([userContent]).size/1024).toFixed(1)+'KB';
+  const endpoint=apiUrl.replace(/^https?:\/\//,'').split('/')[0];
+  showAiLoading(dataSize,endpoint);
+  try{
+    const resp=await fetch(apiUrl+'/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({
+        model:model,
+        messages:[
+          {role:'system',content:prompt},
+          {role:'user',content:userContent}
+        ],
+        temperature:0.3,
+        stream:false
+      })
+    });
+    if(!resp.ok){
+      const errText=await resp.text();
+      showAiError(`API 返回错误 ${resp.status}:\n${errText.slice(0,500)}`);
+      return;
+    }
+    const data=await resp.json();
+    const text=data.choices?.[0]?.message?.content||'(空回复)';
+    showAiResult(text);
+  }catch(e){
+    showAiError(`请求失败：${e.message}\n\n常见原因：\n1. API 地址不正确或未包含 https://\n2. 跨域(CORS)被拦截——部分服务商需在后台配置允许的来源\n3. 密钥无效或余额不足\n4. 网络连接问题`);
+  }
+}
+document.getElementById('askAi').onclick=askAi;
+document.getElementById('aiPromptReset').onclick=()=>{
+  document.getElementById('aiPrompt').value=AI_DEFAULT_PROMPT;
+  saveCfg();
+};
+
+/* ============ 配置持久化（localStorage） ============ */
+// 保存/恢复用户配置，刷新页面或下次访问时自动还原
+const CFG_KEY='fz_cfg_v1';
+const CFG_IDS=['stopwords','decimals','minLen','wPerf','wPos','wFreq','minFreq','minScore','negCostThr','harvAcosThr','topN','comboLen','aiApiUrl','aiModel','aiKey','aiTopN','aiPrompt'];
+const CFG_CHIPS=['pctToggle','colorToggle','filterNum','filterSpec'];
+function saveCfg(){
+  try{
+    const o={};
+    CFG_IDS.forEach(id=>{const el=document.getElementById(id);if(el)o[id]=el.value;});
+    CFG_CHIPS.forEach(id=>{const el=document.getElementById(id);if(el)o[id]=el.classList.contains('on');});
+    localStorage.setItem(CFG_KEY,JSON.stringify(o));
+  }catch(e){}
+}
+function loadCfg(){
+  try{
+    const s=localStorage.getItem(CFG_KEY);if(!s)return;
+    const o=JSON.parse(s);
+    CFG_IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      const saved=o[id];
+      if(saved===undefined||saved===null)return;
+      // 空字符串不覆盖默认 value（让预设的 API/模型生效），但 textarea 的空停用词等允许清空
+      if(typeof saved==='string'&&saved===''&&el.value!==''){
+        if(id==='aiApiUrl'||id==='aiModel'||id==='aiKey')return; // 保留预设默认
+      }
+      el.value=saved;
+    });
+    CFG_CHIPS.forEach(id=>{const el=document.getElementById(id);if(!el)return;const on=!!o[id];el.classList.toggle('on',on);if(id==='pctToggle')STATE.pctDisplay=on;if(id==='colorToggle')STATE.colorOn=on;});
+  }catch(e){}
+}
+// 启动时载入已存配置（在事件绑定之后、首次渲染之前）
+loadCfg();
+// 配置变更时自动保存：数值/下拉用 change，停用词用 input 实时存，开关 chip 用 click
+CFG_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',saveCfg);});
+document.getElementById('stopwords').addEventListener('input',saveCfg);
+['aiApiUrl','aiModel','aiKey','aiPrompt'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',saveCfg);});
+CFG_CHIPS.forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',saveCfg);});
+</script>
+</div>
+<p align="center">@2026 亚马逊广告词根分析工
