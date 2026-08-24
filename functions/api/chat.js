@@ -62,7 +62,7 @@ export async function onRequestPost(context) {
   const { conversation_id, message, content_type, product_info } = body;
   if (!message) return errorResponse('消息内容不能为空');
 
-  const db = getDb(context);
+  const db = await getDb(context);
   const t = now();
 
   // 获取用户 API 配置，若未设置则回退到管理员的共享配置

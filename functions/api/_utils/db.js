@@ -2,9 +2,9 @@
 // D1 数据库工具
 // ============================================
 
-export function getDb(context) {
+export async function getDb(context) {
   const db = context.env.DB;
-  db.exec("PRAGMA foreign_keys=ON;");
+  await db.exec("PRAGMA foreign_keys=ON;");
   return db;
 }
 

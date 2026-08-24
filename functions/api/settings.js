@@ -10,7 +10,7 @@ export async function onRequestGet(context) {
   const { user, error } = await requireAuth(context.request, context);
   if (error) return error;
 
-  const db = getDb(context);
+  const db = await getDb(context);
   const settings = await db.prepare(
     'SELECT api_base, api_model, api_key FROM user_settings WHERE user_id = ?'
   ).bind(user.id).first();
@@ -60,7 +60,7 @@ export async function onRequestPut(context) {
   }
 
   const { api_base, api_model, api_key } = body;
-  const db = getDb(context);
+  const db = await getDb(context);
   const t = now();
 
   // 检查是否有设置记录
@@ -91,7 +91,7 @@ export async function onRequestDelete(context) {
   const { user, error } = await requireAuth(context.request, context);
   if (error) return error;
 
-  const db = getDb(context);
+  const db = await getDb(context);
   await db.prepare('DELETE FROM user_settings WHERE user_id = ?').bind(user.id).run();
   return jsonResponse({ success: true });
 }

@@ -8,7 +8,7 @@ import { verifyPassword, createSession } from '../_utils/auth.js';
 
 export async function onRequestPost(context) {
   const { request } = context;
-  const db = getDb(context);
+  const db = await getDb(context);
 
   let body;
   try {

@@ -77,7 +77,7 @@ export async function getCurrentUser(request, context) {
   }
   if (!token) return null;
 
-  const db = getDb(context);
+  const db = await getDb(context);
   const result = await db.prepare(
     'SELECT s.user_id, s.expires_at, u.email, u.nickname, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?'
   ).bind(token).first();

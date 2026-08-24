@@ -17,7 +17,7 @@ export async function onRequestGet(context) {
   // path: api/conversations 或 api/conversations/:id
   const id = pathParts[2];
 
-  const db = getDb(context);
+  const db = await getDb(context);
 
   if (id) {
     // 单条对话详情 + 消息
@@ -71,7 +71,7 @@ export async function onRequestPost(context) {
     return errorResponse('标题、类型、产品信息不能为空');
   }
 
-  const db = getDb(context);
+  const db = await getDb(context);
   const t = now();
   const id = uuid();
 
@@ -92,7 +92,7 @@ export async function onRequestDelete(context) {
 
   if (!id) return errorResponse('缺少对话 ID');
 
-  const db = getDb(context);
+  const db = await getDb(context);
 
   // 先确认归属
   const conv = await db.prepare('SELECT id FROM conversations WHERE id = ? AND user_id = ?').bind(id, user.id).first();

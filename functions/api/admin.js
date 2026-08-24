@@ -14,7 +14,7 @@ export async function onRequestGet(context) {
   const { user, error } = await requireAuth(context.request, context);
   if (error) return error;
 
-  const db = getDb(context);
+  const db = await getDb(context);
 
   // 检查是否已有管理员
   const admin = await db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").first();
@@ -58,7 +58,7 @@ export async function onRequestPost(context) {
   if (password.length < 6) return errorResponse('密码至少 6 位');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return errorResponse('邮箱格式不正确');
 
-  const db = getDb(context);
+  const db = await getDb(context);
   const t = now();
 
   const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first();
@@ -89,7 +89,7 @@ export async function onRequestDelete(context) {
   const id = url.searchParams.get('id');
   if (!id) return errorResponse('缺少 id 参数');
 
-  const db = getDb(context);
+  const db = await getDb(context);
 
   if (parseInt(id) === user.id) {
     return errorResponse('不能删除自己的账号', 400);
