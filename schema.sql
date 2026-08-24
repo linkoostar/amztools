@@ -1,6 +1,8 @@
 -- ============================================
 -- FBA 工具箱 · D1 数据库 Schema
 -- 执行方式：wrangler d1 execute fza_toolbox --file=./schema.sql
+-- 注意：D1 默认关闭外键，运行时每次连接需执行 PRAGMA foreign_keys=ON;
+--       已在 functions/api/_utils/db.js 的 getDb() 中自动执行
 -- ============================================
 
 -- 用户表

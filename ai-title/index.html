@@ -320,6 +320,9 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 <div class="modal-mask" id="settingsModal">
   <div class="modal">
     <h2>⚙ API 设置</h2>
+    <div id="sharedNotice" style="display:none;background:#dbeafe;border:1px solid #93c5fd;color:#1e40af;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:14px">
+      🔑 当前使用管理员共享配置，填写后保存将覆盖为个人配置
+    </div>
     <div class="form-group">
       <label>API Base URL</label>
       <input type="text" id="setBase" placeholder="https://api.openai.com/v1">
@@ -334,6 +337,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
       <div style="font-size:11px;color:var(--muted);margin-top:4px">密钥加密存储，仅后端调用时使用</div>
     </div>
     <div class="modal-actions">
+      <button class="btn-ghost" id="useSharedBtn" onclick="useSharedSettings()" style="display:none">使用管理员共享配置</button>
       <button class="btn-ghost" onclick="closeSettings()">取消</button>
       <button class="btn-primary" onclick="saveSettings()" style="width:auto;padding:8px 18px">保存</button>
     </div>
@@ -708,7 +712,19 @@ async function openSettings(){
     const s = await api('/settings');
     document.getElementById('setBase').value = s.api_base || '';
     document.getElementById('setModel').value = s.api_model || '';
-    document.getElementById('setKey').value = s.api_key || '';
+    if(s.is_shared){
+      document.getElementById('sharedNotice').style.display = 'block';
+      document.getElementById('useSharedBtn').style.display = 'none';
+      document.getElementById('setKey').value = '';
+    }else if(s.api_base || s.api_model){
+      document.getElementById('sharedNotice').style.display = 'none';
+      document.getElementById('useSharedBtn').style.display = 'inline-block';
+      document.getElementById('setKey').value = s.api_key || '';
+    }else{
+      document.getElementById('sharedNotice').style.display = 'none';
+      document.getElementById('useSharedBtn').style.display = 'none';
+      document.getElementById('setKey').value = '';
+    }
   }catch(e){
     toast('加载设置失败','error');
   }
@@ -731,6 +747,17 @@ async function saveSettings(){
     closeSettings();
   }catch(e){
     toast('保存失败: '+e.message,'error');
+  }
+}
+
+async function useSharedSettings(){
+  if(!confirm('确定清除个人配置，恢复使用管理员共享配置？')) return;
+  try{
+    await api('/settings', { method:'DELETE' });
+    toast('已恢复为管理员共享配置','success');
+    openSettings();
+  }catch(e){
+    toast('操作失败: '+e.message,'error');
   }
 }
 

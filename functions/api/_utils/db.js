@@ -3,7 +3,9 @@
 // ============================================
 
 export function getDb(context) {
-  return context.env.DB;  // D1 binding，在 wrangler.toml 中配置
+  const db = context.env.DB;
+  db.exec("PRAGMA foreign_keys=ON;");
+  return db;
 }
 
 export function now() {

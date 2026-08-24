@@ -15,16 +15,37 @@ export async function onRequestGet(context) {
     'SELECT api_base, api_model, api_key FROM user_settings WHERE user_id = ?'
   ).bind(user.id).first();
 
-  if (!settings) {
-    return jsonResponse({ api_base: '', api_model: '', api_key: '', user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' } });
+  const userInfo = { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' };
+
+  const hasOwnSettings = settings && settings.api_base && settings.api_model && settings.api_key;
+  if (hasOwnSettings) {
+    return jsonResponse({
+      api_base: settings.api_base,
+      api_model: settings.api_model,
+      api_key: '••••' + settings.api_key.slice(-4),
+      user: userInfo,
+      is_shared: false
+    });
   }
-  const maskedKey = settings.api_key ? '••••' + settings.api_key.slice(-4) : '';
-  return jsonResponse({
-    api_base: settings.api_base,
-    api_model: settings.api_model,
-    api_key: maskedKey,
-    user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' }
-  });
+
+  // 用户未设置，尝试回退到管理员的共享配置
+  const admin = await db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").first();
+  if (admin && admin.id !== user.id) {
+    const adminSettings = await db.prepare(
+      'SELECT api_base, api_model, api_key FROM user_settings WHERE user_id = ?'
+    ).bind(admin.id).first();
+    if (adminSettings && adminSettings.api_base && adminSettings.api_model && adminSettings.api_key) {
+      return jsonResponse({
+        api_base: adminSettings.api_base,
+        api_model: adminSettings.api_model,
+        api_key: '••••' + adminSettings.api_key.slice(-4),
+        user: userInfo,
+        is_shared: true
+      });
+    }
+  }
+
+  return jsonResponse({ api_base: '', api_model: '', api_key: '', user: userInfo, is_shared: false });
 }
 
 export async function onRequestPut(context) {
@@ -65,12 +86,22 @@ export async function onRequestPut(context) {
   return jsonResponse({ success: true });
 }
 
+// DELETE /api/settings — 清除个人 API 配置，回退到管理员共享配置
+export async function onRequestDelete(context) {
+  const { user, error } = await requireAuth(context.request, context);
+  if (error) return error;
+
+  const db = getDb(context);
+  await db.prepare('DELETE FROM user_settings WHERE user_id = ?').bind(user.id).run();
+  return jsonResponse({ success: true });
+}
+
 export async function onRequestOptions() {
   return new Response('', {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,PUT,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,PUT,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,Authorization'
     }
   });

@@ -65,10 +65,23 @@ export async function onRequestPost(context) {
   const db = getDb(context);
   const t = now();
 
-  // 获取用户 API 配置
-  const settings = await db.prepare(
+  // 获取用户 API 配置，若未设置则回退到管理员的共享配置
+  let settings = await db.prepare(
     'SELECT api_base, api_model, api_key FROM user_settings WHERE user_id = ?'
   ).bind(user.id).first();
+
+  const hasOwnSettings = settings && settings.api_base && settings.api_model && settings.api_key;
+  if (!hasOwnSettings) {
+    const admin = await db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").first();
+    if (admin && admin.id !== user.id) {
+      const adminSettings = await db.prepare(
+        'SELECT api_base, api_model, api_key FROM user_settings WHERE user_id = ?'
+      ).bind(admin.id).first();
+      if (adminSettings && adminSettings.api_base && adminSettings.api_model && adminSettings.api_key) {
+        settings = adminSettings;
+      }
+    }
+  }
 
   if (!settings || !settings.api_base || !settings.api_model || !settings.api_key) {
     return errorResponse('请先在设置中配置 API 地址、模型和密钥', 400);
