@@ -16,14 +16,14 @@ export async function onRequestGet(context) {
   ).bind(user.id).first();
 
   if (!settings) {
-    return jsonResponse({ api_base: '', api_model: '', api_key: '' });
+    return jsonResponse({ api_base: '', api_model: '', api_key: '', user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' } });
   }
-  // api_key 只返回掩码
   const maskedKey = settings.api_key ? '••••' + settings.api_key.slice(-4) : '';
   return jsonResponse({
     api_base: settings.api_base,
     api_model: settings.api_model,
-    api_key: maskedKey
+    api_key: maskedKey,
+    user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' }
   });
 }
 

@@ -10,41 +10,43 @@
 import { getDb, now, uuid, errorResponse } from './_utils/db.js';
 import { requireAuth } from './_utils/auth.js';
 
-// 文案类型 → system prompt
-const SYSTEM_PROMPTS = {
-  title: `你是一位资深亚马逊运营文案专家，擅长撰写高转化率的产品标题。
-要求：
-1. 标题控制在 200 字符以内（主标题+副标题总和）
-2. 前5个词必须包含品牌+核心关键词+最大卖点
-3. 自然嵌入搜索流量词，避免堆砌
-4. 格式：品牌 + 核心关键词 + 核心卖点 + 适用场景 + 次要特性
-5. 用英文输出，语法地道，符合美国消费者阅读习惯`,
+// 统一 system prompt — 一次生成全部文案
+const SYSTEM_PROMPT = `你是一位资深亚马逊运营文案专家，精通亚马逊A10搜索算法和 listing 优化。请根据提供的产品信息，一次性生成以下全部内容：
 
-  bullets: `你是一位资深亚马逊运营文案专家，擅长撰写高转化率的五点描述（Bullet Points）。
-要求：
-1. 5 条，每条前 1-2 个词大写加粗作为卖点标题
-2. 每条 150-200 字符，突出用户利益而非功能
-3. 按重要性排序：最大卖点放第一条
-4. 自然嵌入关键词，帮助 SEO
-5. 用英文输出，地道、有说服力`,
+【输出格式要求】
+请严格按照以下格式输出，每个部分用明确的标题分隔：
 
-  search_terms: `你是一位资深亚马逊关键词研究专家，擅长挖掘高流量高转化的搜索词。
-要求：
-1. 输出 5 组后台 Search Terms，每组 250 字符以内
-2. 覆盖：核心词、长尾词、场景词、同义词、错拼词
-3. 不要重复标题和五点里已有的词
-4. 用空格或逗号分隔，无需标点
-5. 全部小写，不重复
-6. 按相关度排序，最相关的放第一组`,
+=== 产品标题 ===
+- 200字符以内（主标题+副标题总和）
+- 前5个词必须包含品牌+核心关键词+最大卖点
+- 格式：品牌 + 核心关键词 + 核心卖点 + 适用场景 + 次要特性
+- 自然嵌入搜索流量词，避免堆砌
 
-  description: `你是一位资深亚马逊运营文案专家，擅长撰写产品详情描述（Product Description / A+ Content 文案）。
-要求：
-1. 300-500 词，故事化叙述，代入用户场景
-2. 结构：场景引入 → 痛点 → 解决方案 → 核心卖点展开 → 社会证明 → 行动号召
-3. 使用 <p> <strong> <br> 等基础 HTML 标签排版
-4. 自然埋入关键词
-5. 用英文输出，专业可信，避免夸张`
-};
+=== 五点描述 ===
+- 5条 Bullet Points，每条前1-2个词大写加粗作为卖点标题
+- 每条150-200字符，突出用户利益而非功能
+- 按重要性排序，最大卖点放第一条
+- 自然嵌入关键词，帮助SEO
+
+=== 详情描述 ===
+- 300-500词，故事化叙述，代入用户场景
+- 结构：场景引入 → 痛点 → 解决方案 → 核心卖点展开 → 行动号召
+- 使用 <p> <strong> <br> 等基础HTML标签排版
+- 自然埋入关键词
+
+=== Search Terms ===
+- 5组后台Search Terms，每组250字符以内
+- 覆盖：核心词、长尾词、场景词、同义词、错拼词
+- 不要重复标题和五点里已有的词
+- 用空格分隔，全部小写，不重复
+
+【通用要求】
+- 全部用英文输出，语法地道，符合美国消费者阅读习惯
+- 避免促销性/主观性/夸张性词汇（如best, perfect, amazing等）
+- 不使用emoji和特殊字符
+- 品牌名和专利词加粗
+- 避免全大写
+- 基于提供的竞品参考提取结构和卖点逻辑，但不要照搬不相关的功能描述`;
 
 export async function onRequestPost(context) {
   const { user, error } = await requireAuth(context.request, context);
@@ -83,23 +85,22 @@ export async function onRequestPost(context) {
     if (!conv) return errorResponse('对话不存在', 404);
   } else {
     // 新对话
-    if (!content_type || !product_info) {
-      return errorResponse('新对话需要 content_type 和 product_info');
+    if (!product_info) {
+      return errorResponse('新对话需要 product_info');
     }
     convId = uuid();
     const title = product_info.product_name || '新对话';
     await db.prepare(
       'INSERT INTO conversations (id, user_id, title, content_type, product_info, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(convId, user.id, title, content_type, JSON.stringify(product_info), t, t).run();
-    conv = { id: convId, content_type, product_info: JSON.stringify(product_info) };
+    ).bind(convId, user.id, title, content_type || 'all', JSON.stringify(product_info), t, t).run();
+    conv = { id: convId, content_type: content_type || 'all', product_info: JSON.stringify(product_info) };
   }
 
   // 组装 messages
   const messages = [];
 
   // system prompt
-  const sysPrompt = SYSTEM_PROMPTS[conv.content_type] || SYSTEM_PROMPTS.title;
-  messages.push({ role: 'system', content: sysPrompt });
+  messages.push({ role: 'system', content: SYSTEM_PROMPT });
 
   // 如果是新对话，加入产品信息上下文
   let prodInfo = conv.product_info;
@@ -107,16 +108,20 @@ export async function onRequestPost(context) {
     try { prodInfo = JSON.parse(prodInfo); } catch { prodInfo = {}; }
   }
   if (!conversation_id && prodInfo) {
-    const productDesc = `【产品信息】
-产品名：${prodInfo.product_name || ''}
-品牌：${prodInfo.brand || ''}
-类目：${prodInfo.category || ''}
-核心卖点：${prodInfo.key_selling_points || ''}
-目标受众：${prodInfo.target_audience || ''}
-材质/规格：${prodInfo.specs || ''}
-竞品差异：${prodInfo.differentiators || ''}
-其他信息：${prodInfo.other || ''}`;
-    messages.push({ role: 'user', content: productDesc + '\n\n请根据以上产品信息，为我生成优质的亚马逊文案。' });
+    const productDesc = `【站点】${prodInfo.marketplace || '美国站'}
+【语言】${prodInfo.language || '英语'}
+【五点描述需安插的关键词】${prodInfo.keywords || ''}
+【产品名称】${prodInfo.product_name || ''}
+【销售方式】${prodInfo.packaging || ''}
+【产品主要用途和特点】${prodInfo.features || ''}
+【产品使用方式】${prodInfo.usage || ''}
+【产品主要材质】${prodInfo.material || ''}
+【产品包含内容】${prodInfo.includes || ''}
+【竞品参考标题和五点】${prodInfo.competitor_bullets || ''}
+【竞品产品描述】${prodInfo.competitor_desc || ''}
+
+请根据以上产品信息，为我生成优质的亚马逊文案。注意：竞品仅供参考结构和卖点逻辑，不要照搬不相关的功能描述。`;
+    messages.push({ role: 'user', content: productDesc });
   }
 
   // 加载历史消息
@@ -161,6 +166,7 @@ export async function onRequestPost(context) {
     }
 
     // 流式转发 + 收集完整回复
+    const encoder = new TextEncoder();
     const reader = aiResponse.body.getReader();
     const decoder = new TextDecoder();
     let fullContent = '';
@@ -212,7 +218,6 @@ export async function onRequestPost(context) {
       }
     });
 
-    const encoder = new TextEncoder();
     return new Response(stream, {
       status: 200,
       headers: {

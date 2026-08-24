@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   nickname TEXT,
+  role TEXT NOT NULL DEFAULT 'user',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );

@@ -79,7 +79,7 @@ export async function getCurrentUser(request, context) {
 
   const db = getDb(context);
   const result = await db.prepare(
-    'SELECT s.user_id, s.expires_at, u.email, u.nickname FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?'
+    'SELECT s.user_id, s.expires_at, u.email, u.nickname, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?'
   ).bind(token).first();
 
   if (!result) return null;
@@ -88,7 +88,7 @@ export async function getCurrentUser(request, context) {
     await db.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
     return null;
   }
-  return { id: result.user_id, email: result.email, nickname: result.nickname, token };
+  return { id: result.user_id, email: result.email, nickname: result.nickname, role: result.role || 'user', token };
 }
 
 // 需要登录的中间件

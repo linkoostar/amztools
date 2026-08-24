@@ -61,15 +61,6 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .home-title{font-size:22px;font-weight:700;margin-bottom:6px}
 .home-desc{font-size:13px;color:var(--muted);margin-bottom:24px}
 
-/* 文案类型选择 */
-.type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
-.type-card{border:2px solid var(--border);border-radius:10px;padding:14px 12px;cursor:pointer;transition:.12s;text-align:center;background:var(--bg2)}
-.type-card:hover{border-color:var(--primary-l)}
-.type-card.active{border-color:var(--primary);background:var(--primary-l)}
-.type-card .type-icon{font-size:24px;margin-bottom:6px}
-.type-card .type-name{font-size:12px;font-weight:700}
-.type-card .type-desc{font-size:10px;color:var(--muted);margin-top:3px}
-
 /* 产品信息表单 */
 .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
 .form-card h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
@@ -146,7 +137,6 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 @media (max-width:768px){
   .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);transition:.2s}
   .sidebar.open{transform:translateX(0)}
-  .type-grid{grid-template-columns:repeat(2,1fr)}
   .form-grid{grid-template-columns:1fr}
   .msg{max-width:95%}
 }
@@ -167,6 +157,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
         <div class="user-email" id="userEmail"></div>
         <span class="user-action" onclick="openSettings()">⚙ 设置</span>
         <span style="color:var(--border)"> · </span>
+        <span class="user-action" id="adminLink" onclick="openAdmin()" style="display:none">👥 账号管理</span>
+        <span style="color:var(--border)" id="adminDivider"> · </span>
         <span class="user-action" onclick="logout()">退出</span>
       </div>
     </div>
@@ -178,7 +170,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
     <div class="auth-wrap" id="authView">
       <div class="auth-card">
         <h2>✨ AI 文案助手</h2>
-        <p class="sub">亚马逊标题 · 五点 · 搜索词 · 详情描述</p>
+        <p class="sub">亚马逊标题 · 五点描述 · 详情描述 · Search Terms 一次性生成</p>
         <div class="auth-tabs">
           <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">登录</div>
           <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">注册</div>
@@ -209,6 +201,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
             <input type="password" id="regPassword" placeholder="至少6位">
           </div>
           <button class="btn-primary" onclick="doRegister()">注册</button>
+          <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center">第一个注册的账号自动成为管理员<br>之后注册将关闭，由管理员创建子账号</div>
         </div>
       </div>
     </div>
@@ -217,72 +210,85 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
     <div class="home-view" id="homeView" style="display:none">
       <div class="home-inner">
         <h2 class="home-title">生成亚马逊文案</h2>
-        <p class="home-desc">选择文案类型，填写产品信息，AI 为你生成高转化文案</p>
-
-        <!-- 文案类型 -->
-        <div class="type-grid" id="typeGrid">
-          <div class="type-card active" data-type="title" onclick="selectType('title')">
-            <div class="type-icon">📝</div>
-            <div class="type-name">产品标题</div>
-            <div class="type-desc">主标题+副标题</div>
-          </div>
-          <div class="type-card" data-type="bullets" onclick="selectType('bullets')">
-            <div class="type-icon">🔸</div>
-            <div class="type-name">五点描述</div>
-            <div class="type-desc">Bullet Points</div>
-          </div>
-          <div class="type-card" data-type="search_terms" onclick="selectType('search_terms')">
-            <div class="type-icon">🔍</div>
-            <div class="type-name">Search Terms</div>
-            <div class="type-desc">后台搜索词</div>
-          </div>
-          <div class="type-card" data-type="description" onclick="selectType('description')">
-            <div class="type-icon">📄</div>
-            <div class="type-name">详情描述</div>
-            <div class="type-desc">A+ 长文案</div>
-          </div>
-        </div>
+        <p class="home-desc">填写产品信息，AI 一次性生成标题、五点描述、详情描述和 Search Terms</p>
 
         <!-- 产品信息 -->
         <div class="form-card">
           <h3>📦 产品信息</h3>
           <div class="form-grid">
             <div class="field">
+              <label>站点 *</label>
+              <select id="pMarketplace">
+                <option value="美国站">美国站</option>
+                <option value="英国站">英国站</option>
+                <option value="德国站">德国站</option>
+                <option value="日本站">日本站</option>
+                <option value="法国站">法国站</option>
+                <option value="意大利站">意大利站</option>
+                <option value="西班牙站">西班牙站</option>
+                <option value="加拿大站">加拿大站</option>
+                <option value="墨西哥站">墨西哥站</option>
+                <option value="澳大利亚站">澳大利亚站</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>语言 *</label>
+              <select id="pLanguage">
+                <option value="英语">英语</option>
+                <option value="德语">德语</option>
+                <option value="法语">法语</option>
+                <option value="意大利语">意大利语</option>
+                <option value="西班牙语">西班牙语</option>
+                <option value="日语">日语</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>五点描述需安插的关键词</label>
+              <textarea id="pKeywords" rows="2" placeholder="如：google nest camera charging cable, google camera charging cable, google nest charging cable"></textarea>
+            </div>
+            <div class="field full">
               <label>产品名称 *</label>
-              <input type="text" id="pName" placeholder="如：Wireless Earbuds Pro">
+              <input type="text" id="pName" placeholder="如：Google Nest Cam Outdoor 供电延长线">
             </div>
             <div class="field">
-              <label>品牌</label>
-              <input type="text" id="pBrand" placeholder="品牌名">
+              <label>销售方式</label>
+              <input type="text" id="pPackaging" placeholder="如：1根装、2件套">
             </div>
             <div class="field">
-              <label>类目</label>
-              <input type="text" id="pCategory" placeholder="如：Electronics > Headphones">
-            </div>
-            <div class="field">
-              <label>目标受众</label>
-              <input type="text" id="pAudience" placeholder="如：运动爱好者、通勤族">
+              <label>产品主要材质</label>
+              <input type="text" id="pMaterial" placeholder="如：塑料, 白色">
             </div>
             <div class="field full">
-              <label>核心卖点 *</label>
-              <textarea id="pSell" placeholder="每行一个卖点，如：&#10;• 40小时超长续航&#10;• IPX7 防水&#10;• 主动降噪"></textarea>
+              <label>产品主要用途和特点 *</label>
+              <textarea id="pFeatures" rows="2" placeholder="如：Extension cable for Google Nest Cam Outdoor power line"></textarea>
             </div>
             <div class="field full">
-              <label>材质 / 规格</label>
-              <textarea id="pSpecs" placeholder="如：蓝牙5.3，10mm动圈，Type-C充电..."></textarea>
+              <label>产品使用方式</label>
+              <textarea id="pUsage" rows="2" placeholder="如：In-line connection between existing waterproof connectors"></textarea>
             </div>
             <div class="field full">
-              <label>竞品差异 / 独特优势</label>
-              <textarea id="pDiff" placeholder="和竞品比有什么不一样？"></textarea>
-            </div>
-            <div class="field full">
-              <label>其他补充信息</label>
-              <textarea id="pOther" placeholder="其他想让 AI 知道的信息..."></textarea>
+              <label>产品包含内容</label>
+              <textarea id="pIncludes" rows="2" placeholder="如：变体售卖，有9米和15米两个选项"></textarea>
             </div>
           </div>
         </div>
 
-        <button class="generate-btn" id="generateBtn" onclick="startGenerate()">✨ 生成文案</button>
+        <!-- 竞品参考 -->
+        <div class="form-card">
+          <h3>📝 竞品参考（可选）</h3>
+          <div class="form-grid">
+            <div class="field full">
+              <label>竞品参考标题和五点</label>
+              <textarea id="pCompetitorBullets" rows="4" placeholder="粘贴竞品的标题和五点描述，仅供 AI 参考结构和卖点逻辑"></textarea>
+            </div>
+            <div class="field full">
+              <label>竞品产品描述</label>
+              <textarea id="pCompetitorDesc" rows="4" placeholder="粘贴竞品的产品描述/A+内容"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <button class="generate-btn" id="generateBtn" onclick="startGenerate()">✨ 一键生成文案</button>
 
         <!-- 历史对话 -->
         <div class="history-section">
@@ -336,15 +342,34 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 
 <div class="toast" id="toast"></div>
 
+<!-- 账号管理弹窗 -->
+<div class="modal-mask" id="adminModal">
+  <div class="modal" style="max-width:560px">
+    <h2>👥 账号管理</h2>
+    <div class="form-group">
+      <label>新建子账号</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input type="email" id="newUserEmail" placeholder="邮箱" style="flex:1;min-width:140px">
+        <input type="text" id="newUserNick" placeholder="昵称" style="width:100px">
+        <input type="password" id="newUserPass" placeholder="密码" style="width:100px">
+        <button class="btn-primary" onclick="createUser()" style="width:auto;padding:8px 14px">添加</button>
+      </div>
+    </div>
+    <div id="userList" style="margin-top:16px"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeAdmin()">关闭</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ==================== 全局状态 ==================== */
 const API = '/api';
 let currentUser = null;
 let currentConvId = null;
-let currentType = 'title';
 let isSending = false;
 
-const TYPE_NAMES = { title:'标题', bullets:'五点描述', search_terms:'Search Terms', description:'详情描述' };
+const TYPE_NAMES = { all:'全部文案', title:'标题', bullets:'五点描述', search_terms:'Search Terms', description:'详情描述' };
 
 /* ==================== 工具函数 ==================== */
 function toast(msg, type='info'){
@@ -414,39 +439,26 @@ function logout(){
   toast('已退出登录','info');
 }
 
-async function checkAuth(){
-  const token = localStorage.getItem('token');
-  if(!token) return false;
-  try{
-    // 简单验证：尝试获取设置
-    await api('/settings');
-    return true;
-  }catch{
-    localStorage.removeItem('token');
-    return false;
-  }
-}
-
 function afterLogin(){
   document.getElementById('authView').style.display = 'none';
   document.getElementById('homeView').style.display = 'flex';
   document.getElementById('sidebarFoot').style.display = 'flex';
   const email = currentUser?.email || '';
-  document.getElementById('userEmail').textContent = email;
+  document.getElementById('userEmail').textContent = currentUser?.nickname ? currentUser.nickname + ' · ' + email : email;
   document.getElementById('userAvatar').textContent = (currentUser?.nickname || email[0] || 'U').toUpperCase();
+  // 管理员才显示账号管理
+  if(currentUser?.role === 'admin'){
+    document.getElementById('adminLink').style.display = 'inline';
+    document.getElementById('adminDivider').style.display = 'inline';
+  }else{
+    document.getElementById('adminLink').style.display = 'none';
+    document.getElementById('adminDivider').style.display = 'none';
+  }
   loadConversations();
   loadHistory();
 }
 
-/* ==================== 文案类型选择 ==================== */
-function selectType(type){
-  currentType = type;
-  document.querySelectorAll('.type-card').forEach(c=>{
-    c.classList.toggle('active', c.dataset.type===type);
-  });
-}
-
-/* ==================== 对话列表（侧边栏） ==================== */
+/* ==================== 登录/注册 ==================== */
 async function loadConversations(){
   try{
     const data = await api('/conversations?limit=50');
@@ -494,36 +506,39 @@ async function loadHistory(){
 /* ==================== 生成文案（新对话） ==================== */
 async function startGenerate(){
   const name = document.getElementById('pName').value.trim();
-  const sell = document.getElementById('pSell').value.trim();
+  const features = document.getElementById('pFeatures').value.trim();
   if(!name){ toast('请填写产品名称','error'); return; }
-  if(!sell){ toast('请填写核心卖点','error'); return; }
+  if(!features){ toast('请填写产品主要用途和特点','error'); return; }
 
   const productInfo = {
+    marketplace: document.getElementById('pMarketplace').value,
+    language: document.getElementById('pLanguage').value,
+    keywords: document.getElementById('pKeywords').value.trim(),
     product_name: name,
-    brand: document.getElementById('pBrand').value.trim(),
-    category: document.getElementById('pCategory').value.trim(),
-    target_audience: document.getElementById('pAudience').value.trim(),
-    key_selling_points: sell,
-    specs: document.getElementById('pSpecs').value.trim(),
-    differentiators: document.getElementById('pDiff').value.trim(),
-    other: document.getElementById('pOther').value.trim()
+    packaging: document.getElementById('pPackaging').value.trim(),
+    features: features,
+    usage: document.getElementById('pUsage').value.trim(),
+    material: document.getElementById('pMaterial').value.trim(),
+    includes: document.getElementById('pIncludes').value.trim(),
+    competitor_bullets: document.getElementById('pCompetitorBullets').value.trim(),
+    competitor_desc: document.getElementById('pCompetitorDesc').value.trim()
   };
 
   // 切换到聊天视图
   showChatView();
   currentConvId = null;
   document.getElementById('chatTitle').textContent = name;
-  document.getElementById('chatType').textContent = TYPE_NAMES[currentType];
+  document.getElementById('chatType').textContent = '全部文案';
   document.getElementById('chatMessages').innerHTML = '';
 
   // 添加用户消息
-  addMessage('user', '请为产品"' + name + '"生成' + TYPE_NAMES[currentType] + '文案。');
+  addMessage('user', '请为产品"' + name + '"生成亚马逊全部文案（标题+五点描述+详情描述+Search Terms）。');
 
   // 发送请求
   await sendChatRequest({
-    content_type: currentType,
+    content_type: 'all',
     product_info: productInfo,
-    message: '请为我生成优质的亚马逊' + TYPE_NAMES[currentType] + '文案。'
+    message: '请为我生成优质的亚马逊全部文案。'
   });
 }
 
@@ -750,17 +765,102 @@ document.getElementById('chatInput').addEventListener('keydown', function(e){
 document.getElementById('settingsModal').addEventListener('click', function(e){
   if(e.target === this) closeSettings();
 });
+document.getElementById('adminModal').addEventListener('click', function(e){
+  if(e.target === this) closeAdmin();
+});
+
+/* ==================== 账号管理 ==================== */
+function openAdmin(){
+  document.getElementById('adminModal').classList.add('show');
+  loadUsers();
+}
+function closeAdmin(){
+  document.getElementById('adminModal').classList.remove('show');
+}
+
+async function loadUsers(){
+  try{
+    const res = await fetch(API + '/admin', {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+    });
+    const data = await res.json();
+    if(data.promoted){
+      toast('您已被提升为管理员','success');
+      currentUser.role = 'admin';
+      document.getElementById('adminLink').style.display = 'inline';
+      document.getElementById('adminDivider').style.display = 'inline';
+      await loadUsers();
+      return;
+    }
+    const users = data.users || [];
+    const html = users.map(u => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <span style="font-weight:600">${u.email}</span>
+          ${u.nickname ? '<span style="color:var(--muted);margin-left:6px">' + u.nickname + '</span>' : ''}
+          ${u.role === 'admin' ? '<span style="color:#dc2626;font-size:11px;margin-left:6px">管理员</span>' : ''}
+        </div>
+        ${u.role !== 'admin' && u.id !== currentUser.id ? '<button class="btn-ghost" style="padding:4px 10px;font-size:12px" onclick="deleteUser(' + u.id + ')">删除</button>' : ''}
+      </div>
+    `).join('');
+    document.getElementById('userList').innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:20px">暂无其他账号</div>';
+  }catch(e){
+    toast('加载用户列表失败','error');
+  }
+}
+
+async function createUser(){
+  const email = document.getElementById('newUserEmail').value.trim();
+  const nickname = document.getElementById('newUserNick').value.trim();
+  const password = document.getElementById('newUserPass').value.trim();
+  if(!email || !password){ toast('邮箱和密码不能为空','error'); return; }
+  if(password.length < 6){ toast('密码至少6位','error'); return; }
+  try{
+    const res = await fetch(API + '/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ email, nickname, password })
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || '创建失败','error'); return; }
+    toast('子账号创建成功','success');
+    document.getElementById('newUserEmail').value = '';
+    document.getElementById('newUserNick').value = '';
+    document.getElementById('newUserPass').value = '';
+    loadUsers();
+  }catch(e){
+    toast('创建失败','error');
+  }
+}
+
+async function deleteUser(id){
+  if(!confirm('确定删除此账号？')) return;
+  try{
+    const res = await fetch(API + '/admin?id=' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || '删除失败','error'); return; }
+    toast('已删除','success');
+    loadUsers();
+  }catch(e){
+    toast('删除失败','error');
+  }
+}
 
 /* ==================== 初始化 ==================== */
 async function init(){
-  const ok = await checkAuth();
-  if(ok){
-    // 从 token 简单解析用户信息（或重新请求）
-    try{
-      const s = await api('/settings');
-      currentUser = { email: 'user' }; // 简化，实际可以加个 /api/me 接口
-    }catch{}
-    afterLogin();
+  const token = localStorage.getItem('token');
+  if(!token) return;
+  try{
+    const s = await api('/settings');
+    if(s.user){
+      currentUser = s.user;
+      afterLogin();
+    }
+  }catch{
+    localStorage.removeItem('token');
   }
 }
 

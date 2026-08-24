@@ -23,7 +23,7 @@ export async function onRequestPost(context) {
   }
 
   const user = await db.prepare(
-    'SELECT id, email, password_hash, nickname FROM users WHERE email = ?'
+    'SELECT id, email, password_hash, nickname, role FROM users WHERE email = ?'
   ).bind(email.toLowerCase()).first();
 
   if (!user) {
@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
 
   return new Response(JSON.stringify({
     success: true,
-    user: { id: user.id, email: user.email, nickname: user.nickname },
+    user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' },
     token
   }), {
     status: 200,

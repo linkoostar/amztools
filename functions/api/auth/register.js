@@ -29,6 +29,12 @@ export async function onRequestPost(context) {
     return errorResponse('邮箱格式不正确');
   }
 
+  // 检查是否已有用户
+  const userCount = await db.prepare('SELECT COUNT(*) as cnt FROM users').first();
+  if (userCount.cnt > 0) {
+    return errorResponse('注册已关闭，请联系管理员创建账号', 403);
+  }
+
   // 检查邮箱是否已存在
   const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first();
   if (existing) {
@@ -38,9 +44,10 @@ export async function onRequestPost(context) {
   const t = now();
   const pwdHash = await hashPassword(password);
 
+  // 第一个注册的用户自动成为管理员
   const result = await db.prepare(
-    'INSERT INTO users (email, password_hash, nickname, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-  ).bind(email.toLowerCase(), pwdHash, nickname || '', t, t).run();
+    'INSERT INTO users (email, password_hash, nickname, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(email.toLowerCase(), pwdHash, nickname || '', 'admin', t, t).run();
 
   const userId = result.meta.last_row_id;
 
@@ -54,7 +61,7 @@ export async function onRequestPost(context) {
 
   return new Response(JSON.stringify({
     success: true,
-    user: { id: userId, email: email.toLowerCase(), nickname: nickname || '' },
+    user: { id: userId, email: email.toLowerCase(), nickname: nickname || '', role: 'admin' },
     token
   }), {
     status: 200,
