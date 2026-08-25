@@ -787,6 +787,18 @@ async function openConversation(id){
     const msgs = data.messages || [];
     const container = document.getElementById('chatMessages');
     container.innerHTML = '';
+
+    // 渲染产品信息（与首次生成时对齐）
+    if(conv.product_info){
+      try{
+        const prodInfo = typeof conv.product_info === 'string' ? JSON.parse(conv.product_info) : conv.product_info;
+        const infoBubble = addMessage('user', '');
+        infoBubble.innerHTML = formatProductInfo(prodInfo);
+      }catch(e){
+        // product_info 解析失败则跳过
+      }
+    }
+
     msgs.forEach(m=>{
       // 尝试解析 JSON 内容（可能包含图片）
       let textContent = m.content;
