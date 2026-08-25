@@ -12,7 +12,7 @@ export async function onRequestGet(context) {
 
   const db = await getDb(context);
   const settings = await db.prepare(
-    'SELECT api_base, api_model, api_key FROM user_settings WHERE user_id = ?'
+    'SELECT api_base, api_model, api_key, custom_prompt FROM user_settings WHERE user_id = ?'
   ).bind(user.id).first();
 
   const userInfo = { id: user.id, email: user.email, nickname: user.nickname, role: user.role || 'user' };
@@ -23,6 +23,7 @@ export async function onRequestGet(context) {
       api_base: settings.api_base,
       api_model: settings.api_model,
       api_key: '••••' + settings.api_key.slice(-4),
+      custom_prompt: settings.custom_prompt || null,
       user: userInfo,
       is_shared: false
     });
@@ -39,13 +40,18 @@ export async function onRequestGet(context) {
         api_base: adminSettings.api_base,
         api_model: adminSettings.api_model,
         api_key: '••••' + adminSettings.api_key.slice(-4),
+        custom_prompt: (settings && settings.custom_prompt) || null,
         user: userInfo,
         is_shared: true
       });
     }
   }
 
-  return jsonResponse({ api_base: '', api_model: '', api_key: '', user: userInfo, is_shared: false });
+  return jsonResponse({
+    api_base: '', api_model: '', api_key: '',
+    custom_prompt: (settings && settings.custom_prompt) || null,
+    user: userInfo, is_shared: false
+  });
 }
 
 export async function onRequestPut(context) {
@@ -59,7 +65,7 @@ export async function onRequestPut(context) {
     return errorResponse('无效的 JSON');
   }
 
-  const { api_base, api_model, api_key } = body;
+  const { api_base, api_model, api_key, custom_prompt } = body;
   const db = await getDb(context);
   const t = now();
 
@@ -70,17 +76,17 @@ export async function onRequestPut(context) {
     // 如果 api_key 是掩码格式（••••开头），说明没改，不更新
     if (api_key && api_key.startsWith('••••')) {
       await db.prepare(
-        'UPDATE user_settings SET api_base = ?, api_model = ?, updated_at = ? WHERE user_id = ?'
-      ).bind(api_base || '', api_model || '', t, user.id).run();
+        'UPDATE user_settings SET api_base = ?, api_model = ?, custom_prompt = ?, updated_at = ? WHERE user_id = ?'
+      ).bind(api_base || '', api_model || '', custom_prompt ?? null, t, user.id).run();
     } else {
       await db.prepare(
-        'UPDATE user_settings SET api_base = ?, api_model = ?, api_key = ?, updated_at = ? WHERE user_id = ?'
-      ).bind(api_base || '', api_model || '', api_key || '', t, user.id).run();
+        'UPDATE user_settings SET api_base = ?, api_model = ?, api_key = ?, custom_prompt = ?, updated_at = ? WHERE user_id = ?'
+      ).bind(api_base || '', api_model || '', api_key || '', custom_prompt ?? null, t, user.id).run();
     }
   } else {
     await db.prepare(
-      'INSERT INTO user_settings (user_id, api_base, api_model, api_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(user.id, api_base || '', api_model || '', api_key || '', t, t).run();
+      'INSERT INTO user_settings (user_id, api_base, api_model, api_key, custom_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(user.id, api_base || '', api_model || '', api_key || '', custom_prompt ?? null, t, t).run();
   }
 
   return jsonResponse({ success: true });

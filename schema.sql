@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   api_base TEXT DEFAULT '',
   api_model TEXT DEFAULT '',
   api_key TEXT DEFAULT '',
+  custom_prompt TEXT,           -- 用户自定义系统提示词，NULL 表示使用预置默认
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

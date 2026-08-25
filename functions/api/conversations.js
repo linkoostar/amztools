@@ -17,18 +17,17 @@ export async function onRequestGet(context) {
 
   const db = await getDb(context);
   const result = await db.prepare(
-    'SELECT id, title, content_type, created_at, updated_at FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?'
+    `SELECT c.id, c.title, c.content_type, c.created_at, c.updated_at,
+            COUNT(m.id) AS message_count
+     FROM conversations c
+     LEFT JOIN messages m ON m.conversation_id = c.id AND m.role = 'assistant'
+     WHERE c.user_id = ?
+     GROUP BY c.id
+     ORDER BY c.updated_at DESC
+     LIMIT ? OFFSET ?`
   ).bind(user.id, limit, offset).all();
 
-  const convs = result.results || [];
-  for (const c of convs) {
-    const cnt = await db.prepare(
-      'SELECT COUNT(*) as cnt FROM messages WHERE conversation_id = ? AND role = ?'
-    ).bind(c.id, 'assistant').first();
-    c.message_count = cnt ? cnt.cnt : 0;
-  }
-
-  return jsonResponse({ conversations: convs });
+  return jsonResponse({ conversations: result.results || [] });
 }
 
 export async function onRequestPost(context) {
