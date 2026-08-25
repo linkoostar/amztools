@@ -65,28 +65,32 @@ export async function onRequestPut(context) {
     return errorResponse('无效的 JSON');
   }
 
-  const { api_base, api_model, api_key, custom_prompt } = body;
+  const { api_base, api_model, api_key } = body;
+  const hasCustomPrompt = 'custom_prompt' in body;
+  const custom_prompt = hasCustomPrompt ? body.custom_prompt : undefined;
   const db = await getDb(context);
   const t = now();
 
   // 检查是否有设置记录
-  const existing = await db.prepare('SELECT id FROM user_settings WHERE user_id = ?').bind(user.id).first();
+  const existing = await db.prepare('SELECT id, custom_prompt FROM user_settings WHERE user_id = ?').bind(user.id).first();
 
   if (existing) {
+    // custom_prompt 未传则保留原值，传 null 清除，传字符串保存
+    const effectivePrompt = hasCustomPrompt ? (custom_prompt ?? null) : existing.custom_prompt;
     // 如果 api_key 是掩码格式（••••开头），说明没改，不更新
     if (api_key && api_key.startsWith('••••')) {
       await db.prepare(
         'UPDATE user_settings SET api_base = ?, api_model = ?, custom_prompt = ?, updated_at = ? WHERE user_id = ?'
-      ).bind(api_base || '', api_model || '', custom_prompt ?? null, t, user.id).run();
+      ).bind(api_base || '', api_model || '', effectivePrompt, t, user.id).run();
     } else {
       await db.prepare(
         'UPDATE user_settings SET api_base = ?, api_model = ?, api_key = ?, custom_prompt = ?, updated_at = ? WHERE user_id = ?'
-      ).bind(api_base || '', api_model || '', api_key || '', custom_prompt ?? null, t, user.id).run();
+      ).bind(api_base || '', api_model || '', api_key || '', effectivePrompt, t, user.id).run();
     }
   } else {
     await db.prepare(
       'INSERT INTO user_settings (user_id, api_base, api_model, api_key, custom_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(user.id, api_base || '', api_model || '', api_key || '', custom_prompt ?? null, t, t).run();
+    ).bind(user.id, api_base || '', api_model || '', api_key || '', hasCustomPrompt ? (custom_prompt ?? null) : null, t, t).run();
   }
 
   return jsonResponse({ success: true });
