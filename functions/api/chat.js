@@ -1,13 +1,13 @@
 // ============================================
-// POST /api/chat  —  发送消息（流式响应）
+// POST /api/chat  —  发送消息（非流式）
 // Body: { conversation_id, message, content_type, product_info? }
 // - 新对话：不传 conversation_id，传 content_type + product_info + message
 // - 续对话：传 conversation_id + message
 //
-// 响应：SSE 流式（text/event-stream）
+// 响应：JSON { conversation_id, content }
 // ============================================
 
-import { getDb, now, uuid, errorResponse } from './_utils/db.js';
+import { getDb, now, uuid, jsonResponse, errorResponse } from './_utils/db.js';
 import { requireAuth } from './_utils/auth.js';
 
 // 统一 system prompt — 一次生成全部文案
@@ -84,20 +84,25 @@ export async function onRequestPost(context) {
   }
 
   if (!settings || !settings.api_base || !settings.api_model || !settings.api_key) {
-    return errorResponse('请先在设置中配置 API 地址、模型和密钥', 400);
+    const missing = [];
+    if (!settings) missing.push('无配置记录');
+    else {
+      if (!settings.api_base) missing.push('API地址');
+      if (!settings.api_model) missing.push('模型');
+      if (!settings.api_key) missing.push('密钥');
+    }
+    return errorResponse(`请先在设置中配置 API（缺少: ${missing.join(', ')}）`, 400);
   }
 
   let convId = conversation_id;
   let conv = null;
 
   if (convId) {
-    // 续对话：校验归属
     conv = await db.prepare(
       'SELECT * FROM conversations WHERE id = ? AND user_id = ?'
     ).bind(convId, user.id).first();
     if (!conv) return errorResponse('对话不存在', 404);
   } else {
-    // 新对话
     if (!product_info) {
       return errorResponse('新对话需要 product_info');
     }
@@ -111,16 +116,15 @@ export async function onRequestPost(context) {
 
   // 组装 messages
   const messages = [];
-
-  // system prompt
   messages.push({ role: 'system', content: SYSTEM_PROMPT });
 
-  // 如果是新对话，加入产品信息上下文
   let prodInfo = conv.product_info;
   if (typeof prodInfo === 'string') {
     try { prodInfo = JSON.parse(prodInfo); } catch { prodInfo = {}; }
   }
-  if (!conversation_id && prodInfo) {
+
+  // 始终加入产品信息（新对话和续对话都需要，确保 AI 有完整上下文）
+  if (prodInfo) {
     const productDesc = `【站点】${prodInfo.marketplace || '美国站'}
 【语言】${prodInfo.language || '英语'}
 【五点描述需安插的关键词】${prodInfo.keywords || ''}
@@ -137,26 +141,24 @@ export async function onRequestPost(context) {
     messages.push({ role: 'user', content: productDesc });
   }
 
-  // 加载历史消息
+  // 续对话：加载历史消息
   if (conversation_id) {
     const history = await db.prepare(
       'SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC'
     ).bind(convId).all();
-    for (const m of history.results) {
+    for (const m of (history.results || [])) {
       messages.push({ role: m.role, content: m.content });
     }
   }
 
-  // 加入当前用户消息
   messages.push({ role: 'user', content: message });
 
-  // 保存用户消息
   await db.prepare(
     'INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)'
   ).bind(convId, 'user', message, t).run();
   await db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').bind(t, convId).run();
 
-  // 调用 AI API（流式）
+  // 调用 AI API（非流式）
   const apiUrl = settings.api_base.replace(/\/$/, '') + '/chat/completions';
 
   try {
@@ -169,90 +171,33 @@ export async function onRequestPost(context) {
       body: JSON.stringify({
         model: settings.api_model,
         messages: messages,
-        stream: true
+        stream: false
       })
     });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      return errorResponse('AI 接口错误: ' + aiResponse.status + ' ' + errText.slice(0, 200), 502);
+      return errorResponse('AI 接口错误: ' + aiResponse.status + ' ' + errText.slice(0, 300), 502);
     }
 
-    // 流式转发 + 收集完整回复
-    const encoder = new TextEncoder();
-    const reader = aiResponse.body.getReader();
-    const decoder = new TextDecoder();
-    let fullContent = '';
-    let buffer = '';
+    const aiData = await aiResponse.json();
+    const content = aiData.choices?.[0]?.message?.content || '';
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        // 先发 conversation_id
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ conversation_id: convId })}\n\n`));
+    if (!content) {
+      return errorResponse('AI 返回空内容', 502);
+    }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+    // 保存 AI 回复
+    await db.prepare(
+      'INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)'
+    ).bind(convId, 'assistant', content, t).run();
+    await db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').bind(t, convId).run();
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data:')) continue;
-            const dataStr = trimmed.slice(5).trim();
-            if (dataStr === '[DONE]') {
-              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-              // 保存完整回复到数据库
-              await saveAssistantMessage(db, convId, fullContent);
-              controller.close();
-              return;
-            }
-            try {
-              const data = JSON.parse(dataStr);
-              const delta = data.choices?.[0]?.delta?.content || '';
-              if (delta) {
-                fullContent += delta;
-              }
-              // 原样转发
-              controller.enqueue(encoder.encode('data: ' + dataStr + '\n\n'));
-            } catch (e) {
-              // 忽略解析错误
-            }
-          }
-        }
-        // 如果流结束但没收到 [DONE]
-        if (fullContent) {
-          await saveAssistantMessage(db, convId, fullContent);
-        }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      }
-    });
-
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
+    return jsonResponse({ conversation_id: convId, content });
 
   } catch (e) {
     return errorResponse('调用 AI 接口失败: ' + e.message, 500);
   }
-}
-
-async function saveAssistantMessage(db, convId, content) {
-  if (!content || !content.trim()) return;
-  const t = now();
-  await db.prepare(
-    'INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)'
-  ).bind(convId, 'assistant', content, t).run();
-  await db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').bind(t, convId).run();
 }
 
 export async function onRequestOptions() {

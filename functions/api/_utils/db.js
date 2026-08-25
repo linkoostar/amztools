@@ -4,7 +4,7 @@
 
 export async function getDb(context) {
   const db = context.env.DB;
-  await db.exec("PRAGMA foreign_keys=ON;");
+  try { await db.exec("PRAGMA foreign_keys=ON;"); } catch(e) {}
   return db;
 }
 

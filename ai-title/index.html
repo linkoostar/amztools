@@ -563,21 +563,30 @@ function showChatView(){
 async function openConversation(id){
   currentConvId = id;
   showChatView();
-  loadConversations(); // 高亮选中
+  loadConversations();
 
   try{
     const data = await api('/conversations/' + id);
     const conv = data.conversation;
-    document.getElementById('chatTitle').textContent = conv.title;
-    document.getElementById('chatType').textContent = TYPE_NAMES[conv.content_type] || conv.content_type;
+    if(!conv){
+      toast('对话不存在或已被删除','error');
+      showHome();
+      return;
+    }
+    document.getElementById('chatTitle').textContent = conv.title || '未命名对话';
+    document.getElementById('chatType').textContent = TYPE_NAMES[conv.content_type] || conv.content_type || '对话';
 
     const msgs = data.messages || [];
     const container = document.getElementById('chatMessages');
     container.innerHTML = '';
-    msgs.forEach(m=>addMessage(m.role, m.content));
+    msgs.forEach(m=>{
+      const b = addMessage(m.role, m.content);
+      if(m.role === 'assistant') renderMarkdown(b, m.content);
+    });
     scrollToBottom();
   }catch(e){
     toast('加载对话失败: '+e.message,'error');
+    showHome();
   }
 }
 
@@ -622,74 +631,45 @@ async function sendChatRequest(params){
   document.getElementById('sendBtn') && (document.getElementById('sendBtn').disabled = true);
   document.getElementById('generateBtn') && (document.getElementById('generateBtn').disabled = true);
 
-  // 添加空的 assistant 消息容器
   const bubble = addMessage('assistant', '');
   bubble.classList.add('loading-dots');
 
-  let fullContent = '';
-
   try{
-    const token = localStorage.getItem('token');
-    const res = await fetch(API + '/chat', {
+    const data = await api('/chat', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
       body: JSON.stringify(params)
     });
 
-    if(!res.ok){
-      const err = await res.json().catch(()=>({error:'请求失败'}));
-      throw new Error(err.error || '请求失败');
+    bubble.classList.remove('loading-dots');
+
+    if(data.conversation_id && !currentConvId){
+      currentConvId = data.conversation_id;
+      loadConversations();
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while(true){
-      const { done, value } = await reader.read();
-      if(done) break;
-      buffer += decoder.decode(value, { stream:true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for(const line of lines){
-        const trimmed = line.trim();
-        if(!trimmed || !trimmed.startsWith('data:')) continue;
-        const dataStr = trimmed.slice(5).trim();
-        if(dataStr === '[DONE]'){
-          bubble.classList.remove('loading-dots');
-          isSending = false;
-          document.getElementById('sendBtn') && (document.getElementById('sendBtn').disabled = false);
-          document.getElementById('generateBtn') && (document.getElementById('generateBtn').disabled = false);
-          // 刷新侧边栏和历史
-          loadConversations();
-          return;
-        }
-        try{
-          const data = JSON.parse(dataStr);
-          // 如果有 conversation_id，说明是新对话第一次返回
-          if(data.conversation_id && !currentConvId){
-            currentConvId = data.conversation_id;
-            loadConversations();
-          }
-          const delta = data.choices?.[0]?.delta?.content;
-          if(delta){
-            fullContent += delta;
-            bubble.classList.remove('loading-dots');
-            bubble.textContent = fullContent;
-            scrollToBottom();
-          }
-        }catch(e){}
-      }
-    }
+    bubble.textContent = data.content || '(空回复)';
+    renderMarkdown(bubble, data.content);
+    scrollToBottom();
   }catch(e){
     bubble.classList.remove('loading-dots');
-    bubble.textContent = '❌ 生成失败：' + e.message;
+    bubble.textContent = '生成失败：' + e.message;
     bubble.style.color = 'var(--red)';
+  }finally{
     isSending = false;
     document.getElementById('sendBtn') && (document.getElementById('sendBtn').disabled = false);
     document.getElementById('generateBtn') && (document.getElementById('generateBtn').disabled = false);
+    loadConversations();
   }
+}
+
+function renderMarkdown(el, text){
+  if(!text) return;
+  let html = escapeHtml(text);
+  html = html.replace(/&gt;=== (.+?) ===/g, '<h4 style="margin:12px 0 6px;color:var(--primary)">$1</h4>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/^• (.+)$/gm, '<li style="margin-left:18px">$1</li>');
+  html = html.replace(/\n/g, '<br>');
+  el.innerHTML = html;
 }
 
 async function deleteCurrentConv(){
