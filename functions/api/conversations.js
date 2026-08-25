@@ -1,8 +1,7 @@
 // ============================================
-// GET    /api/conversations        —  对话列表
-// POST   /api/conversations        —  新建对话
-// GET    /api/conversations/:id    —  对话详情（含消息）
-// DELETE /api/conversations/:id    —  删除对话
+// GET    /api/conversations  —  对话列表
+// POST   /api/conversations  —  新建对话
+// 单条对话的详情/删除由 [id].js 处理
 // ============================================
 
 import { getDb, now, uuid, jsonResponse, errorResponse } from './_utils/db.js';
@@ -13,46 +12,23 @@ export async function onRequestGet(context) {
   if (error) return error;
 
   const url = new URL(context.request.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  // path: api/conversations 或 api/conversations/:id
-  const id = pathParts[2];
+  const limit = parseInt(url.searchParams.get('limit')) || 50;
+  const offset = parseInt(url.searchParams.get('offset')) || 0;
 
   const db = await getDb(context);
+  const result = await db.prepare(
+    'SELECT id, title, content_type, created_at, updated_at FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?'
+  ).bind(user.id, limit, offset).all();
 
-  if (id) {
-    // 单条对话详情 + 消息
-    const conv = await db.prepare(
-      'SELECT id, title, content_type, product_info, created_at, updated_at FROM conversations WHERE id = ? AND user_id = ?'
-    ).bind(id, user.id).first();
-    if (!conv) return errorResponse('对话不存在', 404);
-
-    const messages = await db.prepare(
-      'SELECT role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC'
-    ).bind(id).all();
-
-    return jsonResponse({
-      conversation: conv,
-      messages: messages.results
-    });
-  } else {
-    // 列表
-    const limit = parseInt(url.searchParams.get('limit')) || 50;
-    const offset = parseInt(url.searchParams.get('offset')) || 0;
-    const result = await db.prepare(
-      'SELECT id, title, content_type, created_at, updated_at FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?'
-    ).bind(user.id, limit, offset).all();
-
-    // 统计每条对话的消息数
-    const convs = result.results;
-    for (const c of convs) {
-      const cnt = await db.prepare(
-        'SELECT COUNT(*) as cnt FROM messages WHERE conversation_id = ? AND role = ?'
-      ).bind(c.id, 'assistant').first();
-      c.message_count = cnt.cnt;
-    }
-
-    return jsonResponse({ conversations: convs });
+  const convs = result.results || [];
+  for (const c of convs) {
+    const cnt = await db.prepare(
+      'SELECT COUNT(*) as cnt FROM messages WHERE conversation_id = ? AND role = ?'
+    ).bind(c.id, 'assistant').first();
+    c.message_count = cnt ? cnt.cnt : 0;
   }
+
+  return jsonResponse({ conversations: convs });
 }
 
 export async function onRequestPost(context) {
@@ -82,35 +58,12 @@ export async function onRequestPost(context) {
   return jsonResponse({ id, title, content_type, created_at: t, updated_at: t });
 }
 
-export async function onRequestDelete(context) {
-  const { user, error } = await requireAuth(context.request, context);
-  if (error) return error;
-
-  const url = new URL(context.request.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  const id = pathParts[2];
-
-  if (!id) return errorResponse('缺少对话 ID');
-
-  const db = await getDb(context);
-
-  // 先确认归属
-  const conv = await db.prepare('SELECT id FROM conversations WHERE id = ? AND user_id = ?').bind(id, user.id).first();
-  if (!conv) return errorResponse('对话不存在', 404);
-
-  // 删除消息（外键级联也会删，但显式删更保险）
-  await db.prepare('DELETE FROM messages WHERE conversation_id = ?').bind(id).run();
-  await db.prepare('DELETE FROM conversations WHERE id = ? AND user_id = ?').bind(id, user.id).run();
-
-  return jsonResponse({ success: true });
-}
-
 export async function onRequestOptions() {
   return new Response('', {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,Authorization'
     }
   });
