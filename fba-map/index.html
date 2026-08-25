@@ -383,7 +383,16 @@ function highlightSvg(site,highlightState){
     });
     if(minX<Infinity){
       const pad=3;
-      svg.setAttribute('viewBox',(minX-pad)+' '+(minY-pad)+' '+(maxX-minX+pad*2)+' '+(maxY-minY+pad*2));
+      let vbW=maxX-minX+pad*2;
+      let vbH=maxY-minY+pad*2;
+      // 美国本土宽高比约3.86:1，强制最小2:1让地图显示更大
+      if(vbW/vbH>2){
+        const newH=vbW/2;
+        const cy=(minY+maxY)/2;
+        svg.setAttribute('viewBox',(minX-pad)+' '+(cy-newH/2)+' '+vbW+' '+newH);
+      }else{
+        svg.setAttribute('viewBox',(minX-pad)+' '+(minY-pad)+' '+vbW+' '+vbH);
+      }
     }
   }
   svg.querySelectorAll('path').forEach(p=>{
