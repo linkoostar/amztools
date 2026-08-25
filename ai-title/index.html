@@ -114,9 +114,22 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .chat-input-box{display:flex;gap:8px;align-items:flex-end}
 .chat-input-box textarea{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;outline:none;resize:none;min-height:44px;max-height:150px;font-family:inherit;transition:.12s}
 .chat-input-box textarea:focus{border-color:var(--primary)}
+.upload-btn{width:40px;height:40px;background:#f1f5f9;border:1px solid var(--border);border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.12s;flex-shrink:0;color:var(--muted)}
+.upload-btn:hover{background:var(--primary-l);color:var(--primary);border-color:var(--primary)}
 .send-btn{padding:10px 18px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;white-space:nowrap}
 .send-btn:hover{background:var(--primary-d)}
 .send-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* 图片预览 */
+.image-preview-area{display:none;padding:8px 20px 0;background:var(--bg2)}
+.image-preview-area.show{display:flex;gap:8px;flex-wrap:wrap}
+.image-preview-item{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.image-preview-item img{width:100%;height:100%;object-fit:cover}
+.image-preview-remove{position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.image-preview-remove:hover{background:var(--red)}
+
+/* 消息中的图片 */
+.msg-bubble img.msg-image{max-width:200px;max-height:150px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block}
 
 .quick-actions{display:flex;gap:6px;padding:0 20px 8px;background:var(--bg2);flex-wrap:wrap}
 .quick-btn{padding:5px 12px;background:#f1f5f9;border:1px solid var(--border);border-radius:16px;font-size:12px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap}
@@ -320,8 +333,11 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           <button class="quick-btn" onclick="sendQuick('给我这个产品的A+作图建议')">🖼️ A+作图建议</button>
           <button class="quick-btn" onclick="sendQuick('给我这个产品的视频制作建议')">🎬 视频制作建议</button>
         </div>
+        <div class="image-preview-area" id="imagePreviewArea"></div>
         <div class="chat-input-box">
-          <textarea id="chatInput" placeholder="继续追问，或提出修改建议...（Enter 发送，Shift+Enter 换行）" rows="1"></textarea>
+          <button class="upload-btn" id="uploadBtn" title="上传图片（支持粘贴）">📎</button>
+          <input type="file" id="fileInput" accept="image/*" style="display:none" multiple>
+          <textarea id="chatInput" placeholder="继续追问，或提出修改建议...（Enter 发送，Shift+Enter 换行，Ctrl+V 粘贴图片）" rows="1"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
         </div>
       </div>
@@ -402,6 +418,7 @@ const API = '/api';
 let currentUser = null;
 let currentConvId = null;
 let isSending = false;
+let pendingImages = []; // 待发送的图片 [{dataUrl, type}]
 
 const TYPE_NAMES = { all:'全部文案', title:'标题', bullets:'五点描述', search_terms:'Search Terms', description:'详情描述' };
 
@@ -420,6 +437,71 @@ async function api(path, options={}){
   const data = await res.json().catch(()=>({error:'请求失败'}));
   if(!res.ok) throw new Error(data.error || '请求失败');
   return data;
+}
+
+/* ==================== 图片上传 ==================== */
+// 点击上传按钮
+document.getElementById('uploadBtn').addEventListener('click', function(){
+  document.getElementById('fileInput').click();
+});
+
+// 文件选择
+document.getElementById('fileInput').addEventListener('change', function(e){
+  handleFiles(e.target.files);
+  e.target.value = ''; // 重置，允许重复选择同一文件
+});
+
+// 粘贴图片
+document.getElementById('chatInput').addEventListener('paste', function(e){
+  const items = e.clipboardData?.items;
+  if(!items) return;
+  for(const item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const file = item.getAsFile();
+      if(file) handleFiles([file]);
+      break;
+    }
+  }
+});
+
+function handleFiles(files){
+  for(const file of files){
+    if(!file.type.startsWith('image/')) continue;
+    if(file.size > 5 * 1024 * 1024){ toast('图片不能超过 5MB','error'); continue; }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      pendingImages.push({ dataUrl: e.target.result, type: file.type });
+      renderImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function renderImagePreviews(){
+  const area = document.getElementById('imagePreviewArea');
+  if(pendingImages.length === 0){
+    area.classList.remove('show');
+    area.innerHTML = '';
+    return;
+  }
+  area.classList.add('show');
+  area.innerHTML = pendingImages.map((img, i) => `
+    <div class="image-preview-item">
+      <img src="${img.dataUrl}" alt="预览">
+      <button class="image-preview-remove" onclick="removePendingImage(${i})" title="移除">×</button>
+    </div>
+  `).join('');
+}
+
+function removePendingImage(index){
+  pendingImages.splice(index, 1);
+  renderImagePreviews();
+}
+
+function clearPendingImages(){
+  pendingImages = [];
+  renderImagePreviews();
 }
 
 /* ==================== 认证 ==================== */
@@ -647,8 +729,20 @@ async function openConversation(id){
     const container = document.getElementById('chatMessages');
     container.innerHTML = '';
     msgs.forEach(m=>{
-      const b = addMessage(m.role, m.content);
-      if(m.role === 'assistant') renderMarkdown(b, m.content);
+      // 尝试解析 JSON 内容（可能包含图片）
+      let textContent = m.content;
+      let images = null;
+      try {
+        const parsed = JSON.parse(m.content);
+        if (parsed && typeof parsed === 'object' && parsed.text !== undefined) {
+          textContent = parsed.text || '';
+          images = parsed.images || null;
+        }
+      } catch {
+        // 普通文本消息
+      }
+      const b = addMessage(m.role, textContent, images);
+      if(m.role === 'assistant') renderMarkdown(b, textContent);
     });
     scrollToBottom();
   }catch(e){
@@ -657,7 +751,7 @@ async function openConversation(id){
   }
 }
 
-function addMessage(role, content){
+function addMessage(role, content, images){
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg ' + role;
@@ -666,10 +760,26 @@ function addMessage(role, content){
     <div class="msg-avatar">${icon}</div>
     <div class="msg-bubble"></div>
   `;
-  div.querySelector('.msg-bubble').textContent = content;
+  const bubble = div.querySelector('.msg-bubble');
+  // 显示图片
+  if(images && images.length > 0){
+    for(const img of images){
+      const imgEl = document.createElement('img');
+      imgEl.className = 'msg-image';
+      imgEl.src = img.dataUrl;
+      imgEl.onclick = function(){ window.open(img.dataUrl, '_blank'); };
+      bubble.appendChild(imgEl);
+    }
+  }
+  // 显示文字
+  if(content){
+    const textSpan = document.createElement('span');
+    textSpan.textContent = content;
+    bubble.appendChild(textSpan);
+  }
   container.appendChild(div);
   scrollToBottom();
-  return div.querySelector('.msg-bubble');
+  return bubble;
 }
 
 function scrollToBottom(){
@@ -688,7 +798,7 @@ async function sendMessage(){
   if(isSending){ toast('正在生成中...','info'); return; }
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
-  if(!text) return;
+  if(!text && pendingImages.length === 0) return;
 
   if(!currentConvId){
     // 理论上不会到这里
@@ -696,8 +806,10 @@ async function sendMessage(){
   }
 
   input.value = '';
-  addMessage('user', text);
-  await sendChatRequest({ conversation_id: currentConvId, message: text });
+  const images = [...pendingImages];
+  clearPendingImages();
+  addMessage('user', text, images);
+  await sendChatRequest({ conversation_id: currentConvId, message: text, images });
 }
 
 async function sendChatRequest(params){

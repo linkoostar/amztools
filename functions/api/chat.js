@@ -1,8 +1,9 @@
 // ============================================
 // POST /api/chat  —  发送消息（非流式）
-// Body: { conversation_id, message, content_type, product_info? }
+// Body: { conversation_id, message, content_type, product_info?, images? }
 // - 新对话：不传 conversation_id，传 content_type + product_info + message
 // - 续对话：传 conversation_id + message
+// - images: [{ dataUrl, type }] 可选，图片 base64 数据
 //
 // 响应：JSON { conversation_id, content }
 // ============================================
@@ -22,8 +23,8 @@ export async function onRequestPost(context) {
     return errorResponse('无效的 JSON');
   }
 
-  const { conversation_id, message, content_type, product_info } = body;
-  if (!message) return errorResponse('消息内容不能为空');
+  const { conversation_id, message, content_type, product_info, images } = body;
+  if (!message && (!images || images.length === 0)) return errorResponse('消息内容不能为空');
 
   const db = await getDb(context);
   const t = now();
@@ -111,15 +112,47 @@ export async function onRequestPost(context) {
       'SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC'
     ).bind(convId).all();
     for (const m of (history.results || [])) {
-      messages.push({ role: m.role, content: m.content });
+      // 尝试解析 JSON 内容（可能包含图片）
+      let msgContent = m.content;
+      try {
+        const parsed = JSON.parse(m.content);
+        if (parsed && typeof parsed === 'object' && parsed.text !== undefined) {
+          // 这是带图片的消息，重构为 content 数组格式
+          const contentParts = [{ type: 'text', text: parsed.text || '' }];
+          if (parsed.images && Array.isArray(parsed.images)) {
+            for (const img of parsed.images) {
+              contentParts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
+            }
+          }
+          msgContent = contentParts;
+        }
+      } catch {
+        // 普通文本消息，保持原样
+      }
+      messages.push({ role: m.role, content: msgContent });
     }
   }
 
-  messages.push({ role: 'user', content: message });
+  // 构建当前用户消息（支持图片）
+  let userMessageContent = message || '';
+  let storedContent = message || '';
+
+  if (images && images.length > 0) {
+    // 有图片时，使用 content 数组格式（OpenAI vision API）
+    const contentParts = [{ type: 'text', text: message || '请分析这张图片' }];
+    for (const img of images) {
+      contentParts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
+    }
+    userMessageContent = contentParts;
+    // 存储为 JSON 字符串
+    storedContent = JSON.stringify({ text: message || '', images });
+  }
+
+  messages.push({ role: 'user', content: userMessageContent });
 
   await db.prepare(
     'INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)'
-  ).bind(convId, 'user', message, t).run();
+  ).bind(convId, 'user', storedContent, t).run();
   await db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').bind(t, convId).run();
 
   // 调用 AI API（非流式）
