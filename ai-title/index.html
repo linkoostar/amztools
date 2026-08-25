@@ -342,8 +342,21 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
     </div>
     <div class="modal-actions">
       <button class="btn-ghost" id="useSharedBtn" onclick="useSharedSettings()" style="display:none">使用管理员共享配置</button>
+      <button class="btn-ghost" onclick="viewSystemPrompt()">查看系统提示词</button>
       <button class="btn-ghost" onclick="closeSettings()">取消</button>
       <button class="btn-primary" onclick="saveSettings()" style="width:auto;padding:8px 18px">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 系统提示词弹窗 -->
+<div class="modal-mask" id="promptModal">
+  <div class="modal" style="max-width:640px">
+    <h2>📝 系统提示词</h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">这是发送给 AI 的 system prompt，决定生成文案的风格和规则。如需调整请告知开发者。</div>
+    <pre id="promptContent" style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto"></pre>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closePrompt()">关闭</button>
     </div>
   </div>
 </div>
@@ -555,8 +568,9 @@ async function startGenerate(){
   document.getElementById('chatType').textContent = '全部文案';
   document.getElementById('chatMessages').innerHTML = '';
 
-  // 添加用户消息
-  addMessage('user', '请为产品"' + name + '"生成亚马逊全部文案（标题+五点描述+详情描述+Search Terms）。');
+  // 显示产品信息摘要
+  const infoBubble = addMessage('user', '');
+  infoBubble.innerHTML = formatProductInfo(productInfo);
 
   // 发送请求
   await sendChatRequest({
@@ -564,6 +578,26 @@ async function startGenerate(){
     product_info: productInfo,
     message: '请为我生成优质的亚马逊全部文案。'
   });
+}
+
+function formatProductInfo(info){
+  const rows = [
+    ['站点', info.marketplace],
+    ['语言', info.language],
+    ['产品名称', info.product_name],
+    ['销售方式', info.packaging],
+    ['用途特点', info.features],
+    ['使用方式', info.usage],
+    ['材质', info.material],
+    ['包含内容', info.includes],
+    ['五点关键词', info.keywords],
+    ['竞品标题/五点', info.competitor_bullets],
+    ['竞品描述', info.competitor_desc],
+  ].filter(r => r[1] && r[1].trim());
+  return `<div style="font-size:12px;line-height:1.8">
+    <div style="font-weight:700;margin-bottom:4px">📋 产品信息</div>
+    ${rows.map(r => `<div><span style="color:var(--muted)">${r[0]}：</span>${escapeHtml(r[1])}</div>`).join('')}
+  </div>`;
 }
 
 /* ==================== 聊天视图 ==================== */
@@ -732,6 +766,20 @@ async function openSettings(){
 
 function closeSettings(){
   document.getElementById('settingsModal').classList.remove('show');
+}
+
+async function viewSystemPrompt(){
+  try{
+    const data = await api('/prompt');
+    document.getElementById('promptContent').textContent = data.prompt || '(空)';
+    document.getElementById('promptModal').classList.add('show');
+  }catch(e){
+    toast('加载提示词失败: '+e.message,'error');
+  }
+}
+
+function closePrompt(){
+  document.getElementById('promptModal').classList.remove('show');
 }
 
 async function saveSettings(){
