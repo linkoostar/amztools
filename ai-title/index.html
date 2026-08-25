@@ -294,19 +294,25 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
         </div>
 
-        <!-- 竞品参考 -->
+        <!-- 其他补充信息 -->
         <div class="form-card">
-          <h3>📝 竞品参考（可选）</h3>
+          <h3> 其他补充信息（可选）</h3>
           <div class="form-grid">
             <div class="field full">
               <label>竞品参考标题和五点</label>
               <textarea id="pCompetitorBullets" rows="4" placeholder="粘贴竞品的标题和五点描述，仅供 AI 参考结构和卖点逻辑"></textarea>
             </div>
             <div class="field full">
-              <label>竞品产品描述</label>
-              <textarea id="pCompetitorDesc" rows="4" placeholder="粘贴竞品的产品描述/A+内容"></textarea>
+              <label>其他补充信息（评论、详情描述等）</label>
+              <textarea id="pOtherInfo" rows="4" placeholder="粘贴买家评论、产品详情描述、QA 问答等补充信息，帮助 AI 更全面了解产品"></textarea>
             </div>
           </div>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+            <button class="upload-btn" id="formUploadBtn" title="上传产品图片" style="width:36px;height:36px;font-size:16px"></button>
+            <input type="file" id="formFileInput" accept="image/*" style="display:none" multiple>
+            <span style="font-size:12px;color:var(--muted)">可上传产品图片，AI 将结合图片信息生成文案</span>
+          </div>
+          <div class="image-preview-area" id="formImagePreviewArea" style="padding:8px 0 0"></div>
         </div>
 
         <button class="generate-btn" id="generateBtn" onclick="startGenerate()">✨ 一键生成文案</button>
@@ -419,6 +425,7 @@ let currentUser = null;
 let currentConvId = null;
 let isSending = false;
 let pendingImages = []; // 待发送的图片 [{dataUrl, type}]
+let formPendingImages = []; // 表单区域的待发送图片
 
 const TYPE_NAMES = { all:'全部文案', title:'标题', bullets:'五点描述', search_terms:'Search Terms', description:'详情描述' };
 
@@ -502,6 +509,55 @@ function removePendingImage(index){
 function clearPendingImages(){
   pendingImages = [];
   renderImagePreviews();
+}
+
+// 表单区域图片上传
+document.getElementById('formUploadBtn').addEventListener('click', function(){
+  document.getElementById('formFileInput').click();
+});
+
+document.getElementById('formFileInput').addEventListener('change', function(e){
+  handleFormFiles(e.target.files);
+  e.target.value = '';
+});
+
+function handleFormFiles(files){
+  for(const file of files){
+    if(!file.type.startsWith('image/')) continue;
+    if(file.size > 5 * 1024 * 1024){ toast('图片不能超过 5MB','error'); continue; }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      formPendingImages.push({ dataUrl: e.target.result, type: file.type });
+      renderFormImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function renderFormImagePreviews(){
+  const area = document.getElementById('formImagePreviewArea');
+  if(formPendingImages.length === 0){
+    area.classList.remove('show');
+    area.innerHTML = '';
+    return;
+  }
+  area.classList.add('show');
+  area.innerHTML = formPendingImages.map((img, i) => `
+    <div class="image-preview-item">
+      <img src="${img.dataUrl}" alt="预览">
+      <button class="image-preview-remove" onclick="removeFormImage(${i})" title="移除">×</button>
+    </div>
+  `).join('');
+}
+
+function removeFormImage(index){
+  formPendingImages.splice(index, 1);
+  renderFormImagePreviews();
+}
+
+function clearFormImages(){
+  formPendingImages = [];
+  renderFormImagePreviews();
 }
 
 /* ==================== 认证 ==================== */
@@ -653,7 +709,7 @@ async function startGenerate(){
     material: document.getElementById('pMaterial').value.trim(),
     includes: document.getElementById('pIncludes').value.trim(),
     competitor_bullets: document.getElementById('pCompetitorBullets').value.trim(),
-    competitor_desc: document.getElementById('pCompetitorDesc').value.trim()
+    other_info: document.getElementById('pOtherInfo').value.trim()
   };
 
   // 切换到聊天视图
@@ -668,10 +724,13 @@ async function startGenerate(){
   infoBubble.innerHTML = formatProductInfo(productInfo);
 
   // 发送请求
+  const formImages = [...formPendingImages];
+  clearFormImages();
   await sendChatRequest({
     content_type: 'all',
     product_info: productInfo,
-    message: '请为我生成优质的亚马逊全部文案。'
+    message: '请为我生成优质的亚马逊全部文案。',
+    images: formImages.length > 0 ? formImages : undefined
   });
 }
 
@@ -687,7 +746,7 @@ function formatProductInfo(info){
     ['包含内容', info.includes],
     ['五点关键词', info.keywords],
     ['竞品标题/五点', info.competitor_bullets],
-    ['竞品描述', info.competitor_desc],
+    ['补充信息', info.other_info],
   ].filter(r => r[1] && r[1].trim());
   return `<div style="font-size:12px;line-height:1.8">
     <div style="font-weight:700;margin-bottom:4px">📋 产品信息</div>

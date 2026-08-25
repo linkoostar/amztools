@@ -100,9 +100,9 @@ export async function onRequestPost(context) {
 【产品主要材质】${prodInfo.material || ''}
 【产品包含内容】${prodInfo.includes || ''}
 【竞品参考标题和五点】${prodInfo.competitor_bullets || ''}
-【竞品产品描述】${prodInfo.competitor_desc || ''}
+【其他补充信息（评论、详情描述等）】${prodInfo.other_info || ''}
 
-请根据以上产品信息，为我生成优质的亚马逊文案。注意：竞品仅供参考结构和卖点逻辑，不要照搬不相关的功能描述。`;
+请根据以上产品信息，为我生成优质的亚马逊文案。注意：竞品和补充信息仅供参考，不要照搬不相关的功能描述。`;
     messages.push({ role: 'user', content: productDesc });
   }
 
