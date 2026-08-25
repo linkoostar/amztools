@@ -118,6 +118,10 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .send-btn:hover{background:var(--primary-d)}
 .send-btn:disabled{opacity:.5;cursor:not-allowed}
 
+.quick-actions{display:flex;gap:6px;padding:0 20px 8px;background:var(--bg2);flex-wrap:wrap}
+.quick-btn{padding:5px 12px;background:#f1f5f9;border:1px solid var(--border);border-radius:16px;font-size:12px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap}
+.quick-btn:hover{background:var(--primary-l);color:var(--primary-d);border-color:var(--primary)}
+
 /* ===== 设置弹窗 ===== */
 .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:100}
 .modal-mask.show{display:flex}
@@ -311,6 +315,11 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
       </div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-input-area">
+        <div class="quick-actions">
+          <button class="quick-btn" onclick="sendQuick('给我这个产品的主副图作图建议')">📸 主副图作图建议</button>
+          <button class="quick-btn" onclick="sendQuick('给我这个产品的A+作图建议')">🖼️ A+作图建议</button>
+          <button class="quick-btn" onclick="sendQuick('给我这个产品的视频制作建议')">🎬 视频制作建议</button>
+        </div>
         <div class="chat-input-box">
           <textarea id="chatInput" placeholder="继续追问，或提出修改建议...（Enter 发送，Shift+Enter 换行）" rows="1"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
@@ -666,6 +675,13 @@ function addMessage(role, content){
 function scrollToBottom(){
   const c = document.getElementById('chatMessages');
   c.scrollTop = c.scrollHeight;
+}
+
+function sendQuick(text){
+  if(isSending){ toast('正在生成中...','info'); return; }
+  if(!currentConvId){ toast('请先选择对话','error'); return; }
+  addMessage('user', text);
+  sendChatRequest({ conversation_id: currentConvId, message: text });
 }
 
 async function sendMessage(){
