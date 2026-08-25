@@ -159,7 +159,9 @@ export async function onRequestPost(context) {
   await db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').bind(t, convId).run();
 
   // 调用 AI API（非流式）
-  const apiUrl = settings.api_base.replace(/\/$/, '') + '/chat/completions';
+  let baseUrl = settings.api_base.replace(/\/+$/, '');
+  if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
+  const apiUrl = baseUrl + '/chat/completions';
 
   try {
     const aiResponse = await fetch(apiUrl, {
