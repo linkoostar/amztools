@@ -23,11 +23,14 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .new-chat-btn{margin:12px;padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center;transition:.12s}
 .new-chat-btn:hover{background:var(--primary-d)}
 .conv-list{flex:1;overflow-y:auto;padding:0 8px 12px}
-.conv-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.12s}
+.conv-item{position:relative;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:.12s}
 .conv-item:hover{background:#f1f5f9}
 .conv-item.active{background:var(--primary-l)}
-.conv-item .conv-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-item .conv-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:20px}
 .conv-item .conv-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:8px}
+.conv-del{position:absolute;top:8px;right:8px;width:20px;height:20px;border:none;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;line-height:1;transition:.12s}
+.conv-item:hover .conv-del{display:flex}
+.conv-del:hover{background:#fef2f2;color:var(--red)}
 .sidebar-foot{padding:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .user-avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
 .user-info{flex:1;min-width:0}
@@ -471,15 +474,31 @@ async function loadConversations(){
       <div class="conv-item ${c.id===currentConvId?'active':''}" onclick="openConversation('${c.id}')">
         <div class="conv-title">${escapeHtml(c.title)}</div>
         <div class="conv-meta">
-          <span>${TYPE_NAMES[c.content_type]||c.content_type}</span>
+          <span>${TYPE_NAMES[c.content_type]||c.content_type||'对话'}</span>
           <span>${c.message_count||0} 条消息</span>
           <span>${formatTime(c.updated_at)}</span>
         </div>
+        <button class="conv-del" onclick="event.stopPropagation();deleteConversation('${c.id}','${escapeHtml(c.title).replace(/'/g,"\\'")}')">x</button>
       </div>
     `).join('');
     document.getElementById('convList').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">暂无对话</div>';
   }catch(e){
     console.error('加载对话失败', e);
+  }
+}
+
+async function deleteConversation(id, title){
+  if(!confirm('确定删除对话「'+title+'」吗？')) return;
+  try{
+    await api('/conversations/' + id, { method:'DELETE' });
+    if(currentConvId === id){
+      currentConvId = null;
+      showHome();
+    }
+    loadConversations();
+    toast('已删除','success');
+  }catch(e){
+    toast('删除失败: '+e.message,'error');
   }
 }
 
