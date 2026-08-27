@@ -1,0 +1,20 @@
+# 本地测试数据
+*.csv
+*.xlsx
+*.xls
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# TRAE 临时文件
+.trae-html-share-packages/
