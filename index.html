@@ -202,14 +202,15 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .amz-sug-search button{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;transition:.12s;font-weight:600}
 .amz-sug-search button:hover{background:var(--primary-d)}
 .amz-sug-search button:disabled{background:#94a3b8;cursor:not-allowed}
-.amz-sug-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px}
-.amz-sug-toolbar .left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.amz-sug-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap}
+.amz-sug-toolbar .left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .amz-sug-toolbar .count{font-size:11px;color:var(--muted)}
 .amz-sug-toolbar select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;cursor:pointer;background:#fff}
+.amz-sug-toolbar .btn-group{display:flex;gap:6px}
 .amz-sug-toolbar .copy-all{padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;transition:.12s}
 .amz-sug-toolbar .copy-all:hover{background:#15803d}
 .amz-sug-toolbar .copy-all:disabled{background:#94a3b8;cursor:not-allowed}
-.amz-sug-toolbar .export-btn{padding:3px 10px;background:#2563eb;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;transition:.12s;margin-left:6px}
+.amz-sug-toolbar .export-btn{padding:3px 10px;background:#2563eb;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;transition:.12s}
 .amz-sug-toolbar .export-btn:hover{background:#1d4ed8}
 .amz-sug-toolbar .export-btn:disabled{background:#94a3b8;cursor:not-allowed}
 .amz-sug-history{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
@@ -584,8 +585,10 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <span class="count" id="amzSugCount"></span>
                 <label><input type="checkbox" id="amzSugDepth"> 深度挖掘(更多结果)</label>
               </div>
-              <button class="copy-all" onclick="copyAllAmzSug()" id="amzSugCopyAll" disabled>一键复制全部</button>
-              <button class="export-btn" onclick="exportAmzSugCsv()" id="amzSugExport" disabled>📥 导出</button>
+              <div class="btn-group">
+                <button class="copy-all" onclick="copyAllAmzSug()" id="amzSugCopyAll" disabled>一键复制全部</button>
+                <button class="export-btn" onclick="exportAmzSugCsv()" id="amzSugExport" disabled>📥 导出</button>
+              </div>
             </div>
             <div class="amz-sug-results" id="amzSugResults">
               <div class="amz-sug-empty">输入关键词搜索亚马逊下拉联想词</div>
