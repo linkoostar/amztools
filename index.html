@@ -190,6 +190,42 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .bw-result-note{font-size:10px;font-weight:600;margin-top:2px;color:var(--amber)}
 .bw-result-note.actual{color:var(--green)}
 
+/* 亚马逊联想词 */
+.amz-sug-search{display:flex;gap:6px;margin-bottom:8px}
+.amz-sug-search input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;transition:.12s}
+.amz-sug-search input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.amz-sug-search button{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;transition:.12s;font-weight:600}
+.amz-sug-search button:hover{background:var(--primary-d)}
+.amz-sug-search button:disabled{background:#94a3b8;cursor:not-allowed}
+.amz-sug-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+.amz-sug-toolbar .left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.amz-sug-toolbar .count{font-size:11px;color:var(--muted)}
+.amz-sug-toolbar select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;cursor:pointer;background:#fff}
+.amz-sug-toolbar .copy-all{padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;transition:.12s}
+.amz-sug-toolbar .copy-all:hover{background:#15803d}
+.amz-sug-toolbar .copy-all:disabled{background:#94a3b8;cursor:not-allowed}
+.amz-sug-history{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.amz-sug-history-label{font-size:11px;color:var(--muted);margin-right:2px;align-self:center}
+.amz-sug-history-item{padding:3px 10px;background:var(--primary-l);color:var(--primary-d);border-radius:12px;font-size:11px;cursor:pointer;transition:.12s;border:1px solid var(--primary);font-weight:500}
+.amz-sug-history-item:hover{background:var(--primary);color:#fff}
+.amz-sug-history-item .del{margin-left:4px;opacity:.5;font-weight:700}
+.amz-sug-history-item .del:hover{opacity:1}
+.amz-sug-results{max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
+.amz-sug-results::-webkit-scrollbar{width:5px}
+.amz-sug-results::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+.amz-sug-empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:12px}
+.amz-sug-loading{padding:20px 10px;text-align:center;color:var(--primary);font-size:12px}
+.amz-sug-error{padding:20px 10px;text-align:center;color:var(--red);font-size:12px}
+.amz-sug-list{list-style:none;padding:0;margin:0}
+.amz-sug-item{padding:7px 12px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;transition:.1s;display:flex;align-items:center;gap:8px}
+.amz-sug-item:hover{background:var(--primary-l)}
+.amz-sug-item:last-child{border-bottom:none}
+.amz-sug-item .idx{color:var(--muted);font-size:11px;font-weight:600;min-width:22px;text-align:right}
+.amz-sug-item .word{flex:1}
+.amz-sug-item .copy-btn{font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--muted);cursor:pointer;transition:.12s;opacity:0}
+.amz-sug-item:hover .copy-btn{opacity:1}
+.amz-sug-item .copy-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+
 /* HS编码查询 */
 .hs-search-box{display:flex;gap:6px;margin-bottom:8px}
 .hs-search-box input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;transition:.12s}
@@ -508,6 +544,42 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
               <a href="http://www.customs.gov.cn/customs/3024272/3024285/index.html" target="_blank" rel="noopener">🇨🇳 中国海关</a>
               <a href="https://www.customs.go.jp/english/tariff/" target="_blank" rel="noopener">🇯🇵 日本税关</a>
               <a href="https://www.gov.uk/trade-tariff" target="_blank" rel="noopener">🇬🇧 英国UKGT</a>
+            </div>
+          </div>
+
+          <!-- 亚马逊联想词 -->
+          <div class="qt-card">
+            <div class="qt-head"><span class="icon">🔮</span><h3>亚马逊联想词</h3><button class="qt-clear" onclick="clearAmzSug()">✕ 清除</button></div>
+            <div class="amz-sug-search">
+              <input type="text" id="amzSugInput" placeholder="输入关键词，如 wireless earbuds" onkeydown="if(event.key==='Enter')searchAmzSug()">
+              <select id="amzSugSite" title="站点">
+                <option value="ATVPDKIKX0DER">🇺🇸 美国</option>
+                <option value="A1F83G8C2ARO7P">🇬🇧 英国</option>
+                <option value="A13V1IB3VIYZZH">🇫🇷 法国</option>
+                <option value="A1PA6795UKMFR9">🇩🇪 德国</option>
+                <option value="APJ6JRA9NG5V4">🇮🇹 意大利</option>
+                <option value="A1RKKUPIHCS9HS">🇪🇸 西班牙</option>
+                <option value="A39IBJ37TRP1C6">🇦🇺 澳大利亚</option>
+                <option value="A2Q3Y263D00KWC">🇧🇷 巴西</option>
+                <option value="A21TJRUUN4KGV">🇮🇳 印度</option>
+                <option value="A1VC38T7YXB528">🇯🇵 日本</option>
+                <option value="A3KVACVP276B40">🇨🇦 加拿大</option>
+                <option value="AAHKV2X7AFYLW">🇨🇳 中国</option>
+                <option value="A1805IZSGTT6HS">🇳🇱 荷兰</option>
+                <option value="A1C4SOXMSFLBCM">🇸🇦 沙特</option>
+                <option value="A2VIGQ35RCS4UG">🇦🇪 阿联酋</option>
+              </select>
+              <button onclick="searchAmzSug()" id="amzSugBtn">搜索</button>
+            </div>
+            <div class="amz-sug-history" id="amzSugHistory"></div>
+            <div class="amz-sug-toolbar">
+              <div class="left">
+                <span class="count" id="amzSugCount"></span>
+              </div>
+              <button class="copy-all" onclick="copyAllAmzSug()" id="amzSugCopyAll" disabled>一键复制全部</button>
+            </div>
+            <div class="amz-sug-results" id="amzSugResults">
+              <div class="amz-sug-empty">输入关键词搜索亚马逊下拉联想词</div>
             </div>
           </div>
 
@@ -984,7 +1056,157 @@ function clearHsCode(){
   document.getElementById('hsResults').innerHTML='<div class="hs-empty">输入关键词搜索，支持中英文</div>';
 }
 
-function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();document.getElementById('backBtn').onclick=goHome;}
+/* ===== 亚马逊联想词 ===== */
+let AMZ_SUG_CACHE = {}; // 简单内存缓存
+const AMZ_SUG_HIST_KEY = 'amz_sug_history';
+let amzSugCurrentWords = [];
+
+function getAmzSugHistory(){
+  try{return JSON.parse(localStorage.getItem(AMZ_SUG_HIST_KEY)||'[]');}catch(e){return [];}
+}
+
+function saveAmzSugHistory(kw){
+  let hist=getAmzSugHistory();
+  // 去重，放到最前面
+  hist=hist.filter(h=>h.toLowerCase()!==kw.toLowerCase());
+  hist.unshift(kw);
+  if(hist.length>20)hist=hist.slice(0,20); // 最多保存20条
+  localStorage.setItem(AMZ_SUG_HIST_KEY,JSON.stringify(hist));
+  renderAmzSugHistory();
+}
+
+function removeAmzSugHistory(kw,ev){
+  ev.stopPropagation();
+  let hist=getAmzSugHistory().filter(h=>h.toLowerCase()!==kw.toLowerCase());
+  localStorage.setItem(AMZ_SUG_HIST_KEY,JSON.stringify(hist));
+  renderAmzSugHistory();
+}
+
+function renderAmzSugHistory(){
+  const hist=getAmzSugHistory();
+  const el=document.getElementById('amzSugHistory');
+  if(!el)return;
+  if(hist.length===0){el.innerHTML='';return;}
+  el.innerHTML='<span class="amz-sug-history-label">历史:</span>'+hist.map(kw=>
+    '<span class="amz-sug-history-item" onclick="searchAmzSug(\''+kw.replace(/'/g,"\\'")+'\')">'+escapeHtml(kw)+
+    '<span class="del" onclick="removeAmzSugHistory(\''+kw.replace(/'/g,"\\'")+'\',event)">×</span></span>'
+  ).join('');
+}
+
+function escapeHtml(s){
+  const div=document.createElement('div');div.textContent=s;return div.innerHTML;
+}
+
+async function searchAmzSug(keyword){
+  const input=document.getElementById('amzSugInput');
+  const site=document.getElementById('amzSugSite').value;
+  const btn=document.getElementById('amzSugBtn');
+  const results=document.getElementById('amzSugResults');
+  const countEl=document.getElementById('amzSugCount');
+  const copyAllBtn=document.getElementById('amzSugCopyAll');
+
+  const kw=(keyword||input.value||'').trim();
+  if(!kw){results.innerHTML='<div class="amz-sug-empty">请输入关键词</div>';return;}
+
+  input.value=kw;
+  btn.disabled=true;
+  copyAllBtn.disabled=true;
+  btn.textContent='搜索中...';
+  results.innerHTML='<div class="amz-sug-loading">正在获取联想词...</div>';
+  countEl.textContent='';
+
+  try {
+    // 先用本地缓存
+    const cacheKey=kw.toLowerCase()+'|'+site;
+    if(AMZ_SUG_CACHE[cacheKey]){
+      renderAmzSugResults(AMZ_SUG_CACHE[cacheKey]);
+      btn.disabled=false;btn.textContent='搜索';
+      saveAmzSugHistory(kw);
+      return;
+    }
+
+    // 通过后端代理请求
+    const resp=await fetch('/api/amz-suggestions?prefix='+encodeURIComponent(kw)+'&mid='+site+'&limit=11');
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
+
+    if(data.error)throw new Error(data.error);
+
+    const words=(data.suggestions||[]).map(s=>s.value).filter(Boolean);
+    AMZ_SUG_CACHE[cacheKey]=words;
+    renderAmzSugResults(words);
+    saveAmzSugHistory(kw);
+  } catch(err){
+    results.innerHTML='<div class="amz-sug-error">获取失败: '+escapeHtml(err.message)+'<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:inline-block">部署到 Cloudflare Pages 后可正常使用</span></div>';
+  } finally {
+    btn.disabled=false;
+    btn.textContent='搜索';
+  }
+}
+
+function renderAmzSugResults(words){
+  const results=document.getElementById('amzSugResults');
+  const countEl=document.getElementById('amzSugCount');
+  const copyAllBtn=document.getElementById('amzSugCopyAll');
+  amzSugCurrentWords=words;
+
+  if(words.length===0){
+    results.innerHTML='<div class="amz-sug-empty">未找到联想词</div>';
+    countEl.textContent='';
+    copyAllBtn.disabled=true;
+    return;
+  }
+
+  countEl.textContent='共 '+words.length+' 个联想词';
+  copyAllBtn.disabled=false;
+
+  results.innerHTML='<ul class="amz-sug-list">'+words.map((w,i)=>
+    '<li class="amz-sug-item" onclick="copySingleSug(\''+w.replace(/'/g,"\\'")+'\',this)">'+
+      '<span class="idx">'+(i+1)+'</span>'+
+      '<span class="word">'+escapeHtml(w)+'</span>'+
+      '<button class="copy-btn" onclick="event.stopPropagation();copySingleSug(\''+w.replace(/'/g,"\\'")+'\',this)">复制</button>'+
+    '</li>'
+  ).join('')+'</ul>';
+}
+
+function copySingleSug(word,el){
+  navigator.clipboard.writeText(word).then(()=>{
+    if(el&&el.classList&&el.classList.contains('copy-btn')){
+      el.textContent='✓';el.style.background='var(--green)';el.style.color='#fff';el.style.borderColor='var(--green)';
+      setTimeout(()=>{el.textContent='复制';el.style.background='';el.style.color='';el.style.borderColor='';},1000);
+    }else if(el){
+      const btn=el.querySelector('.copy-btn');
+      if(btn){btn.textContent='✓';btn.style.background='var(--green)';btn.style.color='#fff';btn.style.borderColor='var(--green)';
+        setTimeout(()=>{btn.textContent='复制';btn.style.background='';btn.style.color='';btn.style.borderColor='';},1000);}
+    }
+  }).catch(()=>{});
+}
+
+function copyAllAmzSug(){
+  if(amzSugCurrentWords.length===0)return;
+  const text=amzSugCurrentWords.join('\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.getElementById('amzSugCopyAll');
+    const orig=btn.textContent;btn.textContent='✓ 已复制';
+    setTimeout(()=>{btn.textContent=orig;},1500);
+  }).catch(()=>{
+    // 降级方案
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    const btn=document.getElementById('amzSugCopyAll');
+    const orig=btn.textContent;btn.textContent='✓ 已复制';
+    setTimeout(()=>{btn.textContent=orig;},1500);
+  });
+}
+
+function clearAmzSug(){
+  document.getElementById('amzSugInput').value='';
+  document.getElementById('amzSugResults').innerHTML='<div class="amz-sug-empty">输入关键词搜索亚马逊下拉联想词</div>';
+  document.getElementById('amzSugCount').textContent='';
+  document.getElementById('amzSugCopyAll').disabled=true;
+  amzSugCurrentWords=[];
+}
+
+function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();document.getElementById('backBtn').onclick=goHome;}
 init();
 </script>
 </body>
