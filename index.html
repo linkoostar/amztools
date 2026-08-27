@@ -96,7 +96,12 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .qt-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .qt-head .icon{font-size:16px}
 .qt-head h3{font-size:13px;font-weight:600}
-.qt-head .desc{font-size:11px;color:var(--muted);margin-left:auto}
+.qt-head .drag-handle{cursor:grab;font-size:13px;color:var(--muted);padding:0 4px;user-select:none;opacity:0;transition:.15s}
+.qt-card:hover .drag-handle{opacity:1}
+.qt-head .drag-handle:active{cursor:grabbing}
+.qt-card.dragging{opacity:.4;transform:scale(.98)}
+.qt-card.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.15)}
+.quick-grid{transition:all .2s}
 .qt-clear{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap;display:flex;align-items:center;gap:3px}
 .qt-clear:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
 
@@ -339,8 +344,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
         <div class="quick-grid" id="quickGrid">
 
           <!-- 标题字符计算器 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">📝</span><h3>标题字符计算器</h3><button class="qt-clear" onclick="clearTitleCounter()">✕ 清除</button></div>
+          <div class="qt-card" data-id="title-counter" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">📝</span><h3>标题字符计算器</h3><button class="qt-clear" onclick="clearTitleCounter()">✕ 清除</button></div>
             <div class="title-section">
               <div class="ts-head">
                 <div class="ts-label">主标题 <span class="limit-badge" id="mainBadge">75</span></div>
@@ -369,8 +374,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 评分星级计算器 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">⭐</span><h3>评分星级计算</h3><button class="qt-clear" onclick="clearRatingCalculator()">✕ 清除</button></div>
+          <div class="qt-card" data-id="rating-calc" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">⭐</span><h3>评分星级计算</h3><button class="qt-clear" onclick="clearRatingCalculator()">✕ 清除</button></div>
             <div class="rating-kpis">
               <div class="rkpi"><span class="rv" id="rDisplay">0.00</span><span class="rl">显示评分</span></div>
               <div class="rkpi"><span class="rv" id="rTotal">0</span><span class="rl">总评价数</span></div>
@@ -390,8 +395,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 计费重计算器 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">⚖️</span><h3>计费重计算器</h3><button class="qt-clear" onclick="clearBillingWeight()">✕ 清除</button></div>
+          <div class="qt-card" data-id="billing-weight" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">⚖️</span><h3>计费重计算器</h3><button class="qt-clear" onclick="clearBillingWeight()">✕ 清除</button></div>
             <div class="bw-section">
               <div class="bw-label">尺寸 <span class="unit-tag" id="bwDimTag">CM</span></div>
               <div class="bw-inputs">
@@ -448,8 +453,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 广告出价试算 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">🎯</span><h3>广告出价试算</h3><button class="qt-clear" onclick="clearAdBid()">✕ 清除</button></div>
+          <div class="qt-card" data-id="ad-bid" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🎯</span><h3>广告出价试算</h3><button class="qt-clear" onclick="clearAdBid()">✕ 清除</button></div>
             <div class="ab-row">
               <label>正常出价(CPC)</label>
               <input type="number" id="abBase" value="0.57" min="0" step="0.01">
@@ -466,8 +471,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 快捷导航 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">🔗</span><h3>快捷导航</h3></div>
+          <div class="qt-card" data-id="quick-links" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔗</span><h3>快捷导航</h3></div>
             <div class="nav-groups">
               <div class="nav-group">
                 <div class="nav-group-title">🏪 亚马逊前台</div>
@@ -521,8 +526,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- HS编码查询 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">🔍</span><h3>HS编码查询</h3><button class="qt-clear" onclick="clearHsCode()">✕ 清除</button></div>
+          <div class="qt-card" data-id="hs-code" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔍</span><h3>HS编码查询</h3><button class="qt-clear" onclick="clearHsCode()">✕ 清除</button></div>
             <div class="hs-search-box">
               <input type="text" id="hsInput" placeholder="输入产品关键词或HS编码，如 电脑 / phone / 8471" oninput="searchHsCode()">
               <select id="hsCatFilter" onchange="searchHsCode()">
@@ -556,8 +561,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 亚马逊联想词 -->
-          <div class="qt-card">
-            <div class="qt-head"><span class="icon">🔮</span><h3>亚马逊联想词</h3><button class="qt-clear" onclick="clearAmzSug()">✕ 清除</button></div>
+          <div class="qt-card" data-id="amz-suggestions" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔮</span><h3>亚马逊联想词</h3><button class="qt-clear" onclick="clearAmzSug()">✕ 清除</button></div>
             <div class="amz-sug-search">
               <input type="text" id="amzSugInput" placeholder="输入关键词，如 wireless earbuds" onkeydown="if(event.key==='Enter')searchAmzSug()">
               <select id="amzSugSite" title="站点">
@@ -1307,7 +1312,101 @@ function clearAmzSug(){
   amzSugCurrentWords=[];
 }
 
-function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();document.getElementById('backBtn').onclick=goHome;}
+/* ===== 即时工具拖拽排序 ===== */
+const QT_SORT_KEY='qt_card_order';
+// 默认排序：亚马逊联想词放最前
+const QT_DEFAULT_ORDER=['amz-suggestions','title-counter','rating-calc','billing-weight','ad-bid','quick-links','hs-code'];
+
+function initDragSort(){
+  const grid=document.getElementById('quickGrid');
+  if(!grid)return;
+
+  // 应用保存的排序
+  applySavedOrder();
+
+  // 拖拽事件
+  let dragEl=null;
+  const cards=grid.querySelectorAll('.qt-card[data-id]');
+
+  cards.forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      dragEl=card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',card.dataset.id);
+    });
+
+    card.addEventListener('dragend',()=>{
+      card.classList.remove('dragging');
+      grid.querySelectorAll('.qt-card').forEach(c=>c.classList.remove('drag-over'));
+      dragEl=null;
+      saveCardOrder();
+    });
+
+    card.addEventListener('dragover',e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      if(dragEl && dragEl!==card){
+        card.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave',e=>{
+      // 只有真正离开卡片时才移除样式
+      const rect=card.getBoundingClientRect();
+      const x=e.clientX,y=e.clientY;
+      if(x<rect.left||x>rect.right||y<rect.top||y>rect.bottom){
+        card.classList.remove('drag-over');
+      }
+    });
+
+    card.addEventListener('drop',e=>{
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if(dragEl && dragEl!==card){
+        // 确定插入位置：根据鼠标在卡片的上半/下半部分
+        const rect=card.getBoundingClientRect();
+        const midY=rect.top+rect.height/2;
+        if(e.clientY<midY){
+          grid.insertBefore(dragEl,card);
+        }else{
+          grid.insertBefore(dragEl,card.nextSibling);
+        }
+      }
+    });
+  });
+}
+
+function applySavedOrder(){
+  const grid=document.getElementById('quickGrid');
+  if(!grid)return;
+
+  let order;
+  try{order=JSON.parse(localStorage.getItem(QT_SORT_KEY)||'null');}catch(e){order=null;}
+  if(!order||!Array.isArray(order))order=QT_DEFAULT_ORDER;
+
+  // 按顺序重排卡片
+  const cards={};
+  grid.querySelectorAll('.qt-card[data-id]').forEach(c=>{cards[c.dataset.id]=c;});
+
+  order.forEach(id=>{
+    if(cards[id]){
+      grid.appendChild(cards[id]); // appendChild 会移动现有元素
+      delete cards[id];
+    }
+  });
+  // 没在排序里的卡片放最后
+  Object.values(cards).forEach(c=>grid.appendChild(c));
+}
+
+function saveCardOrder(){
+  const grid=document.getElementById('quickGrid');
+  if(!grid)return;
+  const order=Array.from(grid.querySelectorAll('.qt-card[data-id]')).map(c=>c.dataset.id);
+  localStorage.setItem(QT_SORT_KEY,JSON.stringify(order));
+}
+
+function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();initDragSort();document.getElementById('backBtn').onclick=goHome;}
 init();
 </script>
 </body>
