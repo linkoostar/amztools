@@ -209,6 +209,9 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .amz-sug-toolbar .copy-all{padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;transition:.12s}
 .amz-sug-toolbar .copy-all:hover{background:#15803d}
 .amz-sug-toolbar .copy-all:disabled{background:#94a3b8;cursor:not-allowed}
+.amz-sug-toolbar .export-btn{padding:3px 10px;background:#2563eb;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;transition:.12s;margin-left:6px}
+.amz-sug-toolbar .export-btn:hover{background:#1d4ed8}
+.amz-sug-toolbar .export-btn:disabled{background:#94a3b8;cursor:not-allowed}
 .amz-sug-history{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .amz-sug-history-label{font-size:11px;color:var(--muted);margin-right:2px;align-self:center}
 .amz-sug-history-item{padding:3px 10px;background:var(--primary-l);color:var(--primary-d);border-radius:12px;font-size:11px;cursor:pointer;transition:.12s;border:1px solid var(--primary);font-weight:500}
@@ -582,6 +585,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <label><input type="checkbox" id="amzSugDepth"> 深度挖掘(更多结果)</label>
               </div>
               <button class="copy-all" onclick="copyAllAmzSug()" id="amzSugCopyAll" disabled>一键复制全部</button>
+              <button class="export-btn" onclick="exportAmzSugCsv()" id="amzSugExport" disabled>📥 导出</button>
             </div>
             <div class="amz-sug-results" id="amzSugResults">
               <div class="amz-sug-empty">输入关键词搜索亚马逊下拉联想词</div>
@@ -1068,6 +1072,7 @@ function renderAmzSugResults(words, mid, isDepth, baseCount){
   const results=document.getElementById('amzSugResults');
   const countEl=document.getElementById('amzSugCount');
   const copyAllBtn=document.getElementById('amzSugCopyAll');
+  const exportBtn=document.getElementById('amzSugExport');
   const siteMid = mid || document.getElementById('amzSugSite').value;
   amzSugCurrentWords=words;
 
@@ -1075,6 +1080,7 @@ function renderAmzSugResults(words, mid, isDepth, baseCount){
     results.innerHTML='<div class="amz-sug-empty">未找到联想词</div>';
     countEl.textContent='';
     copyAllBtn.disabled=true;
+    exportBtn.disabled=true;
     return;
   }
 
@@ -1082,6 +1088,7 @@ function renderAmzSugResults(words, mid, isDepth, baseCount){
   if(isDepth && baseCount){countText+='（主词 '+baseCount+' + 扩展 '+(words.length-baseCount)+'）';}
   countEl.textContent=countText;
   copyAllBtn.disabled=false;
+  exportBtn.disabled=false;
 
   const baseSet=isDepth && baseCount ? new Set(words.slice(0,baseCount).map(w=>w.toLowerCase())) : null;
 
@@ -1139,7 +1146,34 @@ function clearAmzSug(){
   document.getElementById('amzSugResults').innerHTML='<div class="amz-sug-empty">输入关键词搜索亚马逊下拉联想词</div>';
   document.getElementById('amzSugCount').textContent='';
   document.getElementById('amzSugCopyAll').disabled=true;
+  document.getElementById('amzSugExport').disabled=true;
   amzSugCurrentWords=[];
+}
+
+// 导出联想词为CSV表格
+function exportAmzSugCsv(){
+  if(amzSugCurrentWords.length===0)return;
+  const site=document.getElementById('amzSugSite').value;
+  const siteName=AMZ_SITE_MAP[site]?.name||'未知站点';
+  const keyword=document.getElementById('amzSugInput').value.trim()||'关键词';
+  const now=new Date().toISOString().slice(0,10);
+
+  let csvContent="序号,关键词,亚马逊搜索链接\n";
+  amzSugCurrentWords.forEach((word,i)=>{
+    const url=getAmzSearchUrl(word, site);
+    csvContent+=`${i+1},"${word}","${url}"\n`;
+  });
+
+  const blob=new Blob(['\ufeff'+csvContent],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.setAttribute('href',url);
+  a.setAttribute('download',`亚马逊联想词_${keyword}_${siteName}_${now}.csv`);
+  a.style.visibility='hidden';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ===== 即时工具拖拽排序 ===== */
