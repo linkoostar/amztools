@@ -532,16 +532,6 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
               <input type="text" id="hsInput" placeholder="输入产品关键词或HS编码，如 电脑 / phone / 8471" oninput="searchHsCode()">
               <select id="hsCatFilter" onchange="searchHsCode()">
                 <option value="">全部分类</option>
-                <option value="电子电器">电子电器</option>
-                <option value="家居厨房">家居厨房</option>
-                <option value="服装鞋帽">服装鞋帽</option>
-                <option value="美容个护">美容个护</option>
-                <option value="玩具运动">玩具运动</option>
-                <option value="汽配工具">汽配工具</option>
-                <option value="宠物用品">宠物用品</option>
-                <option value="办公文具">办公文具</option>
-                <option value="珠宝钟表">珠宝钟表</option>
-                <option value="包装材料">包装材料</option>
               </select>
             </div>
             <div class="hs-toolbar">
@@ -622,6 +612,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
   <div class="box"><div class="icon">🚧</div><h3 id="devModalName">工具开发中</h3><p id="devModalDesc">该工具正在开发中，敬请期待。</p><button onclick="document.getElementById('devModal').classList.add('hidden')">知道了</button></div>
 </div>
 
+<script src="hs-data.js"></script>
 <script>
 const TOOLS=[
   {id:'root-analysis',name:'词根分析',icon:'📊',path:'root-analysis/index.html',category:'广告优化',desc:'搜索词词根拆分、组合建议、否定词筛选、多站点隔离',status:'active'},
@@ -842,182 +833,20 @@ function clearAdBid(){
 }
 
 /* ===== HS编码查询 ===== */
-const HS_DB=[
-  {code:"8517130000",name:"智能电话机(智能手机)",en:"Smartphones",cat:"电子电器",expired:false,kw:"手机 智能手机 phone smartphone cellphone"},
-  {code:"8517620090",name:"其他数据通讯设备(路由器/调制解调器)",en:"Other data comms equipment(routers/modems)",cat:"电子电器",expired:false,kw:"路由器 router 调制解调器 modem 网络设备"},
-  {code:"8471300000",name:"便携式电脑(笔记本/平板)",en:"Portable computers(laptops/tablets)",cat:"电子电器",expired:true,kw:"笔记本 电脑 laptop computer 便携 平板"},
-  {code:"8471410000",name:"微型机(含CPU+输入输出部件)",en:"Microcomputers(with CPU+I/O)",cat:"电子电器",expired:false,kw:"电脑 computer 台式 微型"},
-  {code:"8471414000",name:"微型机",en:"Microcomputers",cat:"电子电器",expired:false,kw:"电脑 computer 微型"},
-  {code:"8471492000",name:"电脑",en:"Computers",cat:"电子电器",expired:false,kw:"电脑 computer"},
-  {code:"8471494000",name:"电脑",en:"Computers",cat:"电子电器",expired:false,kw:"电脑 computer"},
-  {code:"8471499100",name:"电脑",en:"Computers",cat:"电子电器",expired:false,kw:"电脑 computer"},
-  {code:"8471499900",name:"电脑",en:"Computers",cat:"电子电器",expired:false,kw:"电脑 computer"},
-  {code:"8471504090",name:"其他数据处理设备",en:"Other data processing equipment",cat:"电子电器",expired:false,kw:"电脑 computer 数据处理"},
-  {code:"7616999000",name:"铝制其他制品(电脑机壳/配件)",en:"Aluminum articles(computer cases)",cat:"电子电器",expired:false,kw:"电脑机壳 机壳 配件 aluminum case"},
-  {code:"8473301000",name:"电脑零部件(键盘/鼠标)",en:"Computer parts(keyboard/mouse)",cat:"电子电器",expired:false,kw:"键盘 keyboard 鼠标 mouse 电脑配件 零件"},
-  {code:"8473309000",name:"其他电脑零部件",en:"Other computer parts",cat:"电子电器",expired:false,kw:"电脑 零件 parts 配件 computer"},
-  {code:"8504402000",name:"手机充电器",en:"Mobile phone chargers",cat:"电子电器",expired:false,kw:"充电器 charger 手机充电 adapter"},
-  {code:"8504409990",name:"其他电源适配器",en:"Other power adapters",cat:"电子电器",expired:false,kw:"充电器 adapter 电源适配器 power"},
-  {code:"8507600090",name:"锂离子电池/充电宝",en:"Li-ion batteries/Power banks",cat:"电子电器",expired:false,kw:"充电宝 powerbank 电池 battery 锂电池 lithium"},
-  {code:"8544422900",name:"数据线/USB线",en:"Data cables/USB cables",cat:"电子电器",expired:false,kw:"数据线 cable USB 线 data"},
-  {code:"8544429000",name:"其他绝缘电线",en:"Other insulated wires",cat:"电子电器",expired:false,kw:"电线 wire 绝缘 wire cable"},
-  {code:"8525801290",name:"其他摄像机/摄像头",en:"Other cameras/webcams",cat:"电子电器",expired:false,kw:"摄像头 camera 摄像 监控 surveillance"},
-  {code:"8523512090",name:"U盘/固态存储设备",en:"USB flash drives/SSD",cat:"电子电器",expired:false,kw:"U盘 USB flash 存储盘 storage"},
-  {code:"8528521090",name:"电子显示器",en:"Electronic displays/monitors",cat:"电子电器",expired:false,kw:"显示器 monitor display 屏幕"},
-  {code:"8531200000",name:"LED指示灯面板",en:"LED indicator panels",cat:"电子电器",expired:false,kw:"LED 指示灯 面板 panel"},
-  {code:"8528590010",name:"投影仪",en:"Projectors",cat:"电子电器",expired:false,kw:"投影仪 projector 投影"},
-  {code:"8518300090",name:"耳机/蓝牙耳机",en:"Headphones/Bluetooth earphones",cat:"电子电器",expired:false,kw:"耳机 earphone headphone bluetooth"},
-  {code:"8518220090",name:"音箱/蓝牙音箱",en:"Speakers/Bluetooth speakers",cat:"电子电器",expired:false,kw:"音箱 speaker bluetooth 音响"},
-  {code:"8543709990",name:"其他电气设备",en:"Other electrical equipment",cat:"电子电器",expired:false,kw:"电气设备 electrical 电气"},
-  {code:"8541430000",name:"太阳能电池板",en:"Solar cells/panels",cat:"电子电器",expired:false,kw:"太阳能 solar 太阳能板 太阳能电池"},
-  {code:"8504500000",name:"变频器/变压器",en:"Inverters/Transformers",cat:"电子电器",expired:false,kw:"变频器 inverter 变压器 transformer"},
-  {code:"8536500000",name:"开关/插座",en:"Switches/Sockets",cat:"电子电器",expired:false,kw:"开关 switch 插座 socket"},
-  {code:"8544200000",name:"同轴电缆",en:"Coaxial cables",cat:"电子电器",expired:false,kw:"同轴电缆 coaxial cable"},
-  {code:"9405421000",name:"LED灯具/灯",en:"LED lights/Lamps",cat:"电子电器",expired:false,kw:"LED灯 灯 lamp light 照明 灯具 台灯"},
-  {code:"9405190000",name:"LED灯串/装饰灯",en:"LED string lights",cat:"电子电器",expired:false,kw:"灯串 string 装饰灯 彩灯"},
-  {code:"8528730000",name:"车载显示器",en:"Vehicle displays",cat:"电子电器",expired:false,kw:"车载显示器 车载 display"},
+// HS编码数据库已抽离到 hs-data.js 文件，通过 <script src="hs-data.js"> 加载
 
-  {code:"3924100000",name:"塑料制品餐具/厨房用品",en:"Plastic kitchenware",cat:"家居厨房",expired:false,kw:"塑料 塑料制品 餐具 kitchenware 厨房 plastic 保鲜盒 饭盒"},
-  {code:"3926900000",name:"其他塑料制品(含手机壳)",en:"Other plastic articles(incl. phone cases)",cat:"家居厨房",expired:false,kw:"塑料 手机壳 case 塑料制品 plastic"},
-  {code:"6911100000",name:"陶瓷餐具",en:"Ceramic tableware",cat:"家居厨房",expired:false,kw:"陶瓷 ceramic 餐具 碗 盘 plate bowl"},
-  {code:"6912000000",name:"陶瓷厨房用具",en:"Ceramic kitchenware",cat:"家居厨房",expired:false,kw:"陶瓷 厨房 ceramic kitchenware 砂锅"},
-  {code:"7013490000",name:"玻璃器皿/玻璃杯",en:"Glassware/Glass cups",cat:"家居厨房",expired:false,kw:"玻璃 glass 玻璃杯 杯 glassware 器皿"},
-  {code:"7020009000",name:"其他玻璃制品",en:"Other glass articles",cat:"家居厨房",expired:false,kw:"玻璃制品 glass 玻璃"},
-  {code:"8215990000",name:"不锈钢厨房用具",en:"Stainless steel kitchen utensils",cat:"家居厨房",expired:false,kw:"不锈钢 厨房 utensil 刀具 厨具 steel kitchen"},
-  {code:"7323930000",name:"不锈钢餐桌/厨房器皿",en:"Stainless steel tableware",cat:"家居厨房",expired:false,kw:"不锈钢 餐桌 厨房 steel tableware 锅"},
-  {code:"7323990000",name:"钢铁制厨房用具",en:"Iron/steel kitchenware",cat:"家居厨房",expired:false,kw:"钢铁 厨房 kitchenware 铁 iron"},
-  {code:"9404210000",name:"床垫/寝具",en:"Mattresses/Bedding",cat:"家居厨房",expired:false,kw:"床垫 mattress 床垫 寝具 bedding"},
-  {code:"9404290000",name:"其他寝具/枕头",en:"Other bedding/Pillows",cat:"家居厨房",expired:false,kw:"枕头 pillow 寝具 bedding 被 quilt"},
-  {code:"9403609990",name:"木制家具",en:"Wooden furniture",cat:"家居厨房",expired:false,kw:"家具 furniture 木 木质 桌 椅 table chair"},
-  {code:"9403700000",name:"塑料家具",en:"Plastic furniture",cat:"家居厨房",expired:false,kw:"家具 furniture 塑料 plastic 椅 chair"},
-  {code:"9403200000",name:"金属家具",en:"Metal furniture",cat:"家居厨房",expired:false,kw:"家具 furniture 金属 metal 铁 iron 椅"},
-  {code:"8418102000",name:"冰箱/冷藏柜",en:"Refrigerators/Freezers",cat:"家居厨房",expired:false,kw:"冰箱 refrigerator 冷冻 freezer 冰柜"},
-  {code:"8516603000",name:"电饭煲",en:"Rice cookers",cat:"家居厨房",expired:false,kw:"电饭煲 cooker cooking 烹饪"},
-  {code:"8516500000",name:"微波炉",en:"Microwave ovens",cat:"家居厨房",expired:false,kw:"微波炉 microwave 微波"},
-  {code:"8516710000",name:"咖啡机",en:"Coffee makers",cat:"家居厨房",expired:false,kw:"咖啡机 coffee maker 咖啡"},
-  {code:"8516790000",name:"其他电热器具",en:"Other electro-thermic appliances",cat:"家居厨房",expired:false,kw:"电热 heater 电热 加热 电器"},
-  {code:"8421210000",name:"净水器/过滤器",en:"Water purifiers/Filters",cat:"家居厨房",expired:false,kw:"净水器 净化 water purifier filter 过滤"},
-  {code:"8214100000",name:"修甲套装/指甲刀",en:"Manicure sets/Nail clippers",cat:"家居厨房",expired:false,kw:"指甲刀 修甲 manicure nail 指甲"},
-  {code:"8205510000",name:"手工工具(家用)",en:"Hand tools(household)",cat:"家居厨房",expired:false,kw:"工具 tool 手工 手工具 hand"},
-  {code:"3924900000",name:"其他塑料家用物品",en:"Other plastic household items",cat:"家居厨房",expired:false,kw:"塑料 家用 household plastic 家居"},
-  {code:"7318240000",name:"钉子/螺钉",en:"Nails/Screws",cat:"家居厨房",expired:false,kw:"钉子 螺丝 nail screw 钉"},
-  {code:"7615190000",name:"铝制厨房用具",en:"Aluminum kitchenware",cat:"家居厨房",expired:false,kw:"铝 厨房 aluminum 铝制 kitchenware"},
-  {code:"8423810000",name:"厨房秤/电子秤",en:"Kitchen scales/Electronic scales",cat:"家居厨房",expired:false,kw:"秤 厨房秤 电子秤 scale weighing"},
-  {code:"8479899990",name:"其他独立功能机器",en:"Other machines",cat:"家居厨房",expired:false,kw:"机器 machine 其他"},
-  {code:"8474200000",name:"搅拌机/粉碎机",en:"Mixers/Crushers",cat:"家居厨房",expired:false,kw:"搅拌机 mixer 粉碎 crusher 搅拌 榨汁"},
-
-  {code:"6109100021",name:"T恤(棉制男式)",en:"T-shirts(cotton,men's)",cat:"服装鞋帽",expired:false,kw:"T恤 T-shirt 短袖 tee 男"},
-  {code:"6109100029",name:"T恤(棉制女式)",en:"T-shirts(cotton,women's)",cat:"服装鞋帽",expired:false,kw:"T恤 T-shirt 短袖 tee 女"},
-  {code:"6109909020",name:"T恤(其他材料)",en:"T-shirts(other materials)",cat:"服装鞋帽",expired:false,kw:"T恤 T-shirt 短袖 tee"},
-  {code:"6203429091",name:"男式短裤/长裤(棉)",en:"Men's shorts/pants(cotton)",cat:"服装鞋帽",expired:false,kw:"短裤 裤子 裤 pants shorts 男 men"},
-  {code:"6204629091",name:"女式短裤/长裤(棉)",en:"Women's shorts/pants(cotton)",cat:"服装鞋帽",expired:false,kw:"短裤 裤子 裤 pants shorts 女 women"},
-  {code:"6110200091",name:"套头衫/毛衣(棉)",en:"Pullovers/Sweaters(cotton)",cat:"服装鞋帽",expired:false,kw:"毛衣 套头衫 sweater pullover 针织"},
-  {code:"6110300019",name:"套头衫/毛衣(化纤)",en:"Pullovers/Sweaters(man-made)",cat:"服装鞋帽",expired:false,kw:"毛衣 套头衫 sweater pullover 化纤"},
-  {code:"6201400000",name:"男式外套/大衣",en:"Men's overcoats",cat:"服装鞋帽",expired:false,kw:"外套 大衣 coat overcoat 男 men jacket"},
-  {code:"6202400000",name:"女式外套/大衣",en:"Women's overcoats",cat:"服装鞋帽",expired:false,kw:"外套 大衣 coat overcoat 女 women jacket"},
-  {code:"6101300000",name:"男式夹克/防风衣(化纤)",en:"Men's jackets(polyester)",cat:"服装鞋帽",expired:false,kw:"夹克 防风 jacket 男 men 冲锋衣"},
-  {code:"6102300000",name:"女式夹克/防风衣(化纤)",en:"Women's jackets(polyester)",cat:"服装鞋帽",expired:false,kw:"夹克 防风 jacket 女 women 冲锋衣"},
-  {code:"6403993090",name:"其他鞋类(皮革)",en:"Other footwear(leather)",cat:"服装鞋帽",expired:false,kw:"鞋 shoes 鞋类 footwear leather 皮革"},
-  {code:"6402990000",name:"其他鞋类(橡胶/塑料)",en:"Other footwear(rubber/plastic)",cat:"服装鞋帽",expired:false,kw:"鞋 shoes 鞋类 橡胶 plastic 橡胶"},
-  {code:"6404190000",name:"运动鞋",en:"Sports shoes",cat:"服装鞋帽",expired:false,kw:"运动鞋 shoes sports"},
-  {code:"6500000000",name:"帽子/帽类",en:"Hats/Caps",cat:"服装鞋帽",expired:false,kw:"帽子 hat cap 帽 帽子"},
-  {code:"6117809000",name:"其他服装附件",en:"Other clothing accessories",cat:"服装鞋帽",expired:false,kw:"服装 附件 accessory 配饰 配件"},
-  {code:"6217100000",name:"其他服装附件(非针织)",en:"Other clothing accessories(non-knitted)",cat:"服装鞋帽",expired:false,kw:"服装 附件 accessory 配饰"},
-  {code:"6115950019",name:"袜子(棉)",en:"Socks(cotton)",cat:"服装鞋帽",expired:false,kw:"袜子 socks 袜 袜子"},
-  {code:"6115920019",name:"袜子(合成纤维)",en:"Socks(synthetic)",cat:"服装鞋帽",expired:false,kw:"袜子 socks 袜 袜子"},
-  {code:"6212101000",name:"内衣/文胸",en:"Bras/Lingerie",cat:"服装鞋帽",expired:false,kw:"内衣 文胸 bra lingerie"},
-  {code:"6108910091",name:"女式睡衣/家居服",en:"Women's pajamas",cat:"服装鞋帽",expired:false,kw:"睡衣 pajamas 家居服 女 women"},
-  {code:"6207910091",name:"男式睡衣/家居服",en:"Men's pajamas",cat:"服装鞋帽",expired:false,kw:"睡衣 pajamas 家居服 男 men"},
-  {code:"4202920000",name:"背包/手提包(塑料/纺织)",en:"Backpacks/Handbags(plastic/textile)",cat:"服装鞋帽",expired:false,kw:"背包 手提包 backpack bag 包 包包 双肩包"},
-  {code:"4202210000",name:"手提包/钱包(皮革)",en:"Handbags/Wallets(leather)",cat:"服装鞋帽",expired:false,kw:"手提包 钱包 handbag wallet 包 leather 皮革"},
-  {code:"4203300000",name:"皮带/腰带(皮革)",en:"Leather belts",cat:"服装鞋帽",expired:false,kw:"皮带 腰带 belt 皮带 leather"},
-
-  {code:"3304990000",name:"护肤品/面霜",en:"Skincare products",cat:"美容个护",expired:false,kw:"护肤 护肤品 面霜 skincare cream"},
-  {code:"3305900000",name:"护发产品",en:"Hair care products",cat:"美容个护",expired:false,kw:"护发 护发素 hair care 洗发 shampoo"},
-  {code:"3305100000",name:"洗发水",en:"Shampoo",cat:"美容个护",expired:false,kw:"洗发水 shampoo 洗发"},
-  {code:"3401110000",name:"香皂/洗手液",en:"Soap/Hand wash",cat:"美容个护",expired:false,kw:"香皂 肥皂 soap 洗手液"},
-  {code:"3304200000",name:"眼部彩妆",en:"Eye makeup",cat:"美容个护",expired:false,kw:"眼影 眼线 eye makeup 眼 彩妆"},
-  {code:"3304100000",name:"唇部彩妆/口红",en:"Lip makeup/Lipstick",cat:"美容个护",expired:false,kw:"口红 唇膏 lip lipstick 唇彩"},
-  {code:"3304300000",name:"美甲产品/指甲油",en:"Manicure/Nail polish",cat:"美容个护",expired:false,kw:"指甲油 美甲 nail polish manicure"},
-  {code:"3303000000",name:"香水/香氛",en:"Perfumes/Fragrances",cat:"美容个护",expired:false,kw:"香水 香氛 perfume fragrance"},
-  {code:"3307900000",name:"其他化妆品",en:"Other cosmetics",cat:"美容个护",expired:false,kw:"化妆品 cosmetic 化妆"},
-  {code:"3402500000",name:"清洁剂/洗涤剂",en:"Cleaners/Detergents",cat:"美容个护",expired:false,kw:"清洁剂 洗涤 detergent cleaner 清洁"},
-  {code:"9603219000",name:"牙刷",en:"Toothbrushes",cat:"美容个护",expired:false,kw:"牙刷 toothbrush 牙刷"},
-  {code:"3306200000",name:"牙线/口腔护理",en:"Dental floss/Oral care",cat:"美容个护",expired:false,kw:"牙线 口腔 dental floss oral"},
-  {code:"8214900000",name:"修甲工具/美容工具",en:"Manicure/Beauty tools",cat:"美容个护",expired:false,kw:"修甲 美容 beauty"},
-  {code:"9603290000",name:"化妆刷/美容刷",en:"Makeup brushes",cat:"美容个护",expired:false,kw:"化妆刷 美容刷 brush makeup"},
-  {code:"9615190000",name:"梳子/发梳",en:"Combs/Hairbrushes",cat:"美容个护",expired:false,kw:"梳子 发梳 comb 梳"},
-  {code:"3926300000",name:"塑料化妆容器",en:"Plastic cosmetic containers",cat:"美容个护",expired:false,kw:"化妆品 容器 cosmetic container plastic"},
-
-  {code:"9503008900",name:"玩具/模型/拼图",en:"Toys/Models/Puzzles",cat:"玩具运动",expired:false,kw:"玩具 toy 模型 model 拼图 puzzle"},
-  {code:"9504500000",name:"电子游戏机/手柄",en:"Video game consoles",cat:"玩具运动",expired:false,kw:"游戏机 game console 手柄 controller"},
-  {code:"9504409000",name:"纸牌/桌游",en:"Card games/Board games",cat:"玩具运动",expired:false,kw:"纸牌 桌游 card game board"},
-  {code:"9506911900",name:"健身器材/力量训练",en:"Fitness equipment",cat:"玩具运动",expired:false,kw:"健身器材 健身 fitness 力量 exercise"},
-  {code:"9506621090",name:"充气球类(足球/篮球)",en:"Inflatable balls(soccer/basketball)",cat:"玩具运动",expired:false,kw:"球 足球 篮球 ball soccer basketball 充气"},
-  {code:"9506110000",name:"滑雪装备",en:"Ski equipment",cat:"玩具运动",expired:false,kw:"滑雪 ski 滑雪"},
-  {code:"9506510000",name:"网球拍",en:"Tennis rackets",cat:"玩具运动",expired:false,kw:"网球拍 tennis racket 网球"},
-  {code:"9507002000",name:"钓鱼竿/渔具",en:"Fishing rods",cat:"玩具运动",expired:false,kw:"钓鱼 渔具 fishing rod"},
-  {code:"9506701900",name:"溜冰鞋/轮滑鞋",en:"Ice skates/Roller skates",cat:"玩具运动",expired:false,kw:"溜冰鞋 轮滑鞋 skate roller 溜冰 轮滑"},
-  {code:"9506990000",name:"其他运动装备",en:"Other sports equipment",cat:"玩具运动",expired:false,kw:"运动 equipment sports"},
-  {code:"9504200000",name:"棋类游戏",en:"Chess/Board games",cat:"玩具运动",expired:false,kw:"棋 象棋 chess board"},
-
-  {code:"4011100000",name:"新充气轮胎(轿车)",en:"New pneumatic tires(passenger cars)",cat:"汽配工具",expired:false,kw:"轮胎 tire tyre 轮胎 车 car"},
-  {code:"8708299000",name:"汽车零配件",en:"Motor vehicle parts",cat:"汽配工具",expired:false,kw:"汽车配件 零件 auto parts 汽配 汽车"},
-  {code:"8708999990",name:"其他汽车零件",en:"Other vehicle parts",cat:"汽配工具",expired:false,kw:"汽车零件 parts auto 汽车 汽配"},
-  {code:"8205400000",name:"螺丝刀",en:"Screwdrivers",cat:"汽配工具",expired:false,kw:"螺丝刀 screwdriver 螺丝"},
-  {code:"8203200000",name:"钳子/扳手",en:"Pliers/Wrenches",cat:"汽配工具",expired:false,kw:"钳子 扳手 plier wrench 钳 扳手"},
-  {code:"8204110000",name:"手动扳手",en:"Hand wrenches",cat:"汽配工具",expired:false,kw:"扳手 wrench 手动 hand"},
-  {code:"8204120000",name:"套筒扳手",en:"Socket wrenches",cat:"汽配工具",expired:false,kw:"套筒扳手 socket wrench 套筒"},
-  {code:"8205510000",name:"手工工具(通用)",en:"Hand tools(general)",cat:"汽配工具",expired:false,kw:"工具 hand tool 手工 手工具"},
-  {code:"8465999990",name:"金属加工机/钻孔机",en:"Metal drilling machines",cat:"汽配工具",expired:false,kw:"钻孔机 钻 drill metal 金属"},
-  {code:"8413509090",name:"泵/液体泵",en:"Pumps/Liquid pumps",cat:"汽配工具",expired:false,kw:"泵 pump 液体"},
-  {code:"8481800000",name:"阀门/龙头",en:"Valves/Taps",cat:"汽配工具",expired:false,kw:"阀门 龙头 valve tap 阀门"},
-  {code:"8544300000",name:"汽车点火线/电缆",en:"Vehicle ignition cables",cat:"汽配工具",expired:false,kw:"点火线 电缆 ignition cable 汽车"},
-
-  {code:"2309101000",name:"狗粮/猫粮(零售包装)",en:"Dog/Cat food(retail packed)",cat:"宠物用品",expired:false,kw:"狗粮 猫粮 pet food dog cat 宠物粮"},
-  {code:"2309909000",name:"其他宠物食品",en:"Other pet food",cat:"宠物用品",expired:false,kw:"宠物食品 pet food 宠物"},
-  {code:"4201000090",name:"宠物牵引绳/项圈",en:"Pet leashes/Collars",cat:"宠物用品",expired:false,kw:"牵引绳 项圈 leash collar 宠物"},
-  {code:"4818100000",name:"宠物尿垫/纸品",en:"Pet pads/Paper products",cat:"宠物用品",expired:false,kw:"尿垫 宠物 pad pet paper"},
-  {code:"6307909000",name:"宠物衣服/配饰",en:"Pet clothing/Accessories",cat:"宠物用品",expired:false,kw:"宠物衣服 衣服 pet clothes 宠物"},
-  {code:"9403609990",name:"宠物窝/木制家具",en:"Pet beds/Wooden furniture",cat:"宠物用品",expired:false,kw:"宠物窝 窝 pet bed 宠物窝"},
-  {code:"8302300000",name:"宠物金属配件/锁扣",en:"Pet metal fittings/Buckles",cat:"宠物用品",expired:false,kw:"金属 配件 fitting buckle 锁扣 宠物"},
-
-  {code:"4820100000",name:"笔记本/记事本",en:"Notebooks/Notepads",cat:"办公文具",expired:false,kw:"笔记本 notebook 记事本 notepad"},
-  {code:"9608100000",name:"圆珠笔",en:"Ballpoint pens",cat:"办公文具",expired:false,kw:"圆珠笔 pen ballpoint 笔"},
-  {code:"9608400000",name:"记号笔/马克笔",en:"Markers/Highlighters",cat:"办公文具",expired:false,kw:"记号笔 马克笔 marker 笔"},
-  {code:"9608200000",name:"自来水笔/钢笔",en:"Fountain pens",cat:"办公文具",expired:false,kw:"钢笔 fountain pen 笔"},
-  {code:"9619000000",name:"铅笔/化妆笔",en:"Pencils/Makeup pencils",cat:"办公文具",expired:false,kw:"铅笔 pencil 笔"},
-  {code:"4901990000",name:"印刷书籍/印刷品",en:"Printed books/Materials",cat:"办公文具",expired:false,kw:"书籍 book 印刷品 printed book 印刷"},
-  {code:"4819100000",name:"瓦楞纸箱/包装盒",en:"Corrugated paper boxes",cat:"办公文具",expired:false,kw:"纸箱 包装盒 box carton paper"},
-  {code:"4823900000",name:"其他纸制品/纸标签",en:"Other paper products/Labels",cat:"办公文具",expired:false,kw:"纸制品 纸标签 paper label 纸 标签"},
-  {code:"3926100000",name:"塑料办公用品/文件夹",en:"Plastic office supplies/Folders",cat:"办公文具",expired:false,kw:"办公 文件夹 folder file 塑料 文件夹"},
-  {code:"8304000000",name:"金属文具/文件柜",en:"Metal stationery/Cabinets",cat:"办公文具",expired:false,kw:"文具 文件柜 cabinet metal 金属"},
-  {code:"9610000000",name:"黑板/白板/画板",en:"Blackboards/Whiteboards",cat:"办公文具",expired:false,kw:"黑板 白板 画板 board blackboard whiteboard"},
-  {code:"9611000000",name:"印章/印泥",en:"Stamps/Seals",cat:"办公文具",expired:false,kw:"印章 印泥 stamp seal"},
-
-  {code:"7113191999",name:"贵金属首饰",en:"Precious metal jewelry",cat:"珠宝钟表",expired:false,kw:"首饰 jewelry 金 银 铂 gold silver platinum"},
-  {code:"7113200000",name:"包贵金属首饰",en:"Clad precious metal jewelry",cat:"珠宝钟表",expired:false,kw:"首饰 jewelry 包金 包银 包贵金属"},
-  {code:"7117190000",name:"仿首饰/合金首饰",en:"Imitation jewelry",cat:"珠宝钟表",expired:false,kw:"仿首饰 首饰 jewelry imitation"},
-  {code:"7117900000",name:"其他仿首饰",en:"Other imitation jewelry",cat:"珠宝钟表",expired:false,kw:"仿首饰 jewelry 仿饰"},
-  {code:"9113200000",name:"金属表带",en:"Metal watch straps",cat:"珠宝钟表",expired:false,kw:"表带 watch strap metal 金属"},
-  {code:"9101110000",name:"机械手表(贵金属)",en:"Mechanical watches(precious metal)",cat:"珠宝钟表",expired:false,kw:"手表 watch 机械 mechanical"},
-  {code:"9102110000",name:"机械手表(其他材料)",en:"Mechanical watches(other)",cat:"珠宝钟表",expired:false,kw:"手表 watch 机械 mechanical"},
-  {code:"9102120000",name:"电子手表",en:"Electronic watches",cat:"珠宝钟表",expired:false,kw:"手表 watch 电子 电子表 electric quartz"},
-  {code:"7116200000",name:"宝石/半宝石制品",en:"Precious/semi-precious stone articles",cat:"珠宝钟表",expired:false,kw:"宝石 precious stone 半宝石 gem"},
-
-  {code:"4819200000",name:"折叠纸盒",en:"Folding paper boxes",cat:"包装材料",expired:false,kw:"纸盒 折叠纸盒 box folding paper"},
-  {code:"3923100000",name:"塑料包装盒/包装箱",en:"Plastic packaging boxes",cat:"包装材料",expired:false,kw:"包装盒 塑料盒 packaging box plastic"},
-  {code:"3923210000",name:"塑料袋/包装袋(乙烯聚合物)",en:"Plastic bags(PE)",cat:"包装材料",expired:false,kw:"塑料袋 包装袋 bag plastic PE"},
-  {code:"3923290000",name:"塑料袋(其他塑料)",en:"Plastic bags(other)",cat:"包装材料",expired:false,kw:"塑料袋 包装袋 bag plastic"},
-  {code:"3923900000",name:"其他塑料制品(包装用)",en:"Other plastic packaging",cat:"包装材料",expired:false,kw:"包装 塑料 packaging plastic"},
-  {code:"4811900000",name:"其他纸/纸板制品",en:"Other paper/paperboard products",cat:"包装材料",expired:false,kw:"纸 纸板 paper paperboard packaging 包装"},
-  {code:"7312100000",name:"钢捆扎带/打包带",en:"Steel strapping bands",cat:"包装材料",expired:false,kw:"打包带 捆扎带 strapping band steel"},
-  {code:"8309900000",name:"其他封口/包装配件",en:"Other sealing/packaging fittings",cat:"包装材料",expired:false,kw:"封口 配件 packaging sealing"},
-  {code:"3919100000",name:"塑料胶带/自粘带",en:"Plastic adhesive tapes",cat:"包装材料",expired:false,kw:"胶带 封箱胶 tape adhesive 胶带"},
-  {code:"4823700000",name:"模压纸/纸浆制品",en:"Molded paper/pulp products",cat:"包装材料",expired:false,kw:"模压纸 纸浆 molded pulp paper"},
-  {code:"3920100000",name:"塑料薄膜/片材",en:"Plastic films/sheets",cat:"包装材料",expired:false,kw:"薄膜 塑料膜 film plastic sheet"},
-  {code:"4811410000",name:"牛皮纸/包装纸",en:"Kraft paper/Packaging paper",cat:"包装材料",expired:false,kw:"牛皮纸 包装纸 kraft paper"}
-];
+function initHsCategories(){
+  const db = window.HS_DB || [];
+  const sel = document.getElementById('hsCatFilter');
+  if(!sel || db.length===0)return;
+  const cats = [...new Set(db.map(i=>i.cat))];
+  // 按顺序：分类出现的顺序即为默认顺序
+  cats.forEach(cat=>{
+    const opt=document.createElement('option');
+    opt.value=cat;opt.textContent=cat;
+    sel.appendChild(opt);
+  });
+}
 
 function searchHsCode(){
   const input=document.getElementById('hsInput').value.trim().toLowerCase();
@@ -1025,9 +854,10 @@ function searchHsCode(){
   const showEn=document.getElementById('hsShowEn').checked;
   const results=document.getElementById('hsResults');
   const countEl=document.getElementById('hsCount');
+  const db = window.HS_DB || [];
   if(!input){results.innerHTML='<div class="hs-empty">输入关键词搜索，支持中英文</div>';countEl.textContent='';return;}
   const isCode=/^\d/.test(input);
-  let matched=HS_DB.filter(item=>{
+  let matched=db.filter(item=>{
     if(catFilter&&item.cat!==catFilter)return false;
     if(isCode){return item.code.includes(input.replace(/\s/g,''));}
     return item.kw.toLowerCase().includes(input)||item.name.toLowerCase().includes(input)||item.en.toLowerCase().includes(input);
@@ -1406,7 +1236,7 @@ function saveCardOrder(){
   localStorage.setItem(QT_SORT_KEY,JSON.stringify(order));
 }
 
-function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();initDragSort();document.getElementById('backBtn').onclick=goHome;}
+function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();initDragSort();initHsCategories();document.getElementById('backBtn').onclick=goHome;}
 init();
 </script>
 </body>
