@@ -230,6 +230,9 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .amz-sug-item .search-btn:hover{background:#f59e0b;color:#fff;border-color:#f59e0b}
 .amz-sug-depth-note{font-size:11px;color:var(--amber);margin-top:4px}
 .amz-sug-toolbar label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer}
+.amz-sug-item.base-word .word{font-weight:600}
+.amz-sug-item.base-word{background:#f0f9ff}
+.amz-sug-divider{padding:4px 12px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;border-bottom:1px solid var(--border);text-align:center}
 
 /* HS编码查询 */
 .hs-search-box{display:flex;gap:6px;margin-bottom:8px}
@@ -1156,17 +1159,21 @@ async function searchAmzSug(keyword){
   try {
     const cacheKey=kw.toLowerCase()+'|'+site+'|'+(depth?'deep':'normal');
     if(AMZ_SUG_CACHE[cacheKey]){
-      renderAmzSugResults(AMZ_SUG_CACHE[cacheKey],site);
+      const cached = AMZ_SUG_CACHE[cacheKey];
+      const words = cached.words || cached;
+      const bc = cached.baseCount || 0;
+      renderAmzSugResults(words, site, depth, bc);
       btn.disabled=false;btn.textContent='搜索';
       saveAmzSugHistory(kw);
       return;
     }
 
     let allWords=[];
+    let baseWords=[];
     if(depth){
       // 深度挖掘：先取基础结果，再用每个结果+a-z追加搜索
       results.innerHTML='<div class="amz-sug-loading">深度挖掘中，大约需要10-20秒...</div>';
-      const baseWords=await fetchAmzSug(kw, site, amzSugAbortController.signal);
+      baseWords=await fetchAmzSug(kw, site, amzSugAbortController.signal);
       allWords=[...baseWords];
       
       // 用每个基础结果 + 字母a-z扩展（取前5个基础词扩展，避免请求太多）
@@ -1186,14 +1193,24 @@ async function searchAmzSug(keyword){
         completed++;
         results.innerHTML='<div class="amz-sug-loading">深度挖掘中... ('+completed+'/'+total+')<br>已找到 '+allWords.length+' 个词</div>';
       }
+
+      // 重排序：主词结果放前面，扩展结果放后面
+      const baseSet=new Set(baseWords.map(w=>w.toLowerCase()));
+      const topWords=baseWords;
+      const restWords=allWords.filter(w=>!baseSet.has(w.toLowerCase()));
+      allWords=[...topWords, ...restWords];
     }else{
       allWords=await fetchAmzSug(kw, site, amzSugAbortController.signal);
     }
 
     if(amzSugAbortController.signal.aborted)return;
 
-    AMZ_SUG_CACHE[cacheKey]=allWords;
-    renderAmzSugResults(allWords, site);
+    if(depth){
+      AMZ_SUG_CACHE[cacheKey]={words: allWords, baseCount: baseWords.length};
+    }else{
+      AMZ_SUG_CACHE[cacheKey]=allWords;
+    }
+    renderAmzSugResults(allWords, site, depth, depth ? baseWords.length : 0);
     saveAmzSugHistory(kw);
   } catch(err){
     if(err.name==='AbortError')return;
@@ -1212,7 +1229,7 @@ async function fetchAmzSug(prefix, mid, signal){
   return (data.suggestions||[]).map(s=>s.value).filter(Boolean);
 }
 
-function renderAmzSugResults(words, mid){
+function renderAmzSugResults(words, mid, isDepth, baseCount){
   const results=document.getElementById('amzSugResults');
   const countEl=document.getElementById('amzSugCount');
   const copyAllBtn=document.getElementById('amzSugCopyAll');
@@ -1226,18 +1243,31 @@ function renderAmzSugResults(words, mid){
     return;
   }
 
-  countEl.textContent='共 '+words.length+' 个联想词';
+  let countText='共 '+words.length+' 个联想词';
+  if(isDepth && baseCount){countText+='（主词 '+baseCount+' + 扩展 '+(words.length-baseCount)+'）';}
+  countEl.textContent=countText;
   copyAllBtn.disabled=false;
 
-  results.innerHTML='<ul class="amz-sug-list">'+words.map((w,i)=>{
+  const baseSet=isDepth && baseCount ? new Set(words.slice(0,baseCount).map(w=>w.toLowerCase())) : null;
+
+  let html='<ul class="amz-sug-list">';
+  words.forEach((w,i)=>{
     const searchUrl=getAmzSearchUrl(w, siteMid);
-    return '<li class="amz-sug-item">'+
+    const isBase=baseSet && baseSet.has(w.toLowerCase());
+    const baseClass=isBase?' base-word':'';
+    // 在主词最后一条后面加分隔线
+    const divider=(isDepth && baseCount && i===baseCount-1 && words.length>baseCount)
+      ? '</ul><div class="amz-sug-divider">▼ 扩展联想词（'+(words.length-baseCount)+' 个）</div><ul class="amz-sug-list">'
+      : '';
+    html+='<li class="amz-sug-item'+baseClass+'">'+
       '<span class="idx">'+(i+1)+'</span>'+
       '<span class="word">'+escapeHtml(w)+'</span>'+
       '<a class="search-btn" href="'+searchUrl+'" target="_blank" rel="noopener" title="在亚马逊搜索">🔍 搜索</a>'+
       '<button class="copy-btn" onclick="copySingleSug(\''+w.replace(/'/g,"\\'")+'\',this)">复制</button>'+
-    '</li>';
-  }).join('')+'</ul>';
+    '</li>'+divider;
+  });
+  html+='</ul>';
+  results.innerHTML=html;
 }
 
 function copySingleSug(word,el){
