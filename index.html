@@ -225,6 +225,11 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .amz-sug-item .copy-btn{font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--muted);cursor:pointer;transition:.12s;opacity:0}
 .amz-sug-item:hover .copy-btn{opacity:1}
 .amz-sug-item .copy-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.amz-sug-item .search-btn{font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--muted);cursor:pointer;transition:.12s;opacity:0;text-decoration:none;display:inline-block}
+.amz-sug-item:hover .search-btn{opacity:1}
+.amz-sug-item .search-btn:hover{background:#f59e0b;color:#fff;border-color:#f59e0b}
+.amz-sug-depth-note{font-size:11px;color:var(--amber);margin-top:4px}
+.amz-sug-toolbar label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer}
 
 /* HS编码查询 */
 .hs-search-box{display:flex;gap:6px;margin-bottom:8px}
@@ -568,6 +573,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <option value="A1805IZSGTT6HS">🇳🇱 荷兰</option>
                 <option value="A1C4SOXMSFLBCM">🇸🇦 沙特</option>
                 <option value="A2VIGQ35RCS4UG">🇦🇪 阿联酋</option>
+                <option value="A1AM78C64UM0Y8">🇲🇽 墨西哥</option>
               </select>
               <button onclick="searchAmzSug()" id="amzSugBtn">搜索</button>
             </div>
@@ -575,6 +581,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
             <div class="amz-sug-toolbar">
               <div class="left">
                 <span class="count" id="amzSugCount"></span>
+                <label><input type="checkbox" id="amzSugDepth"> 深度挖掘(更多结果)</label>
               </div>
               <button class="copy-all" onclick="copyAllAmzSug()" id="amzSugCopyAll" disabled>一键复制全部</button>
             </div>
@@ -1060,6 +1067,32 @@ function clearHsCode(){
 let AMZ_SUG_CACHE = {}; // 简单内存缓存
 const AMZ_SUG_HIST_KEY = 'amz_sug_history';
 let amzSugCurrentWords = [];
+let amzSugAbortController = null;
+
+// 站点MID对应域名
+const AMZ_SITE_MAP = {
+  'ATVPDKIKX0DER': {domain:'amazon.com', name:'美国'},
+  'A1F83G8C2ARO7P': {domain:'amazon.co.uk', name:'英国'},
+  'A13V1IB3VIYZZH': {domain:'amazon.fr', name:'法国'},
+  'A1PA6795UKMFR9': {domain:'amazon.de', name:'德国'},
+  'APJ6JRA9NG5V4': {domain:'amazon.it', name:'意大利'},
+  'A1RKKUPIHCS9HS': {domain:'amazon.es', name:'西班牙'},
+  'A39IBJ37TRP1C6': {domain:'amazon.com.au', name:'澳大利亚'},
+  'A2Q3Y263D00KWC': {domain:'amazon.com.br', name:'巴西'},
+  'A21TJRUUN4KGV': {domain:'amazon.in', name:'印度'},
+  'A1VC38T7YXB528': {domain:'amazon.co.jp', name:'日本'},
+  'A3KVACVP276B40': {domain:'amazon.ca', name:'加拿大'},
+  'AAHKV2X7AFYLW': {domain:'amazon.cn', name:'中国'},
+  'A1805IZSGTT6HS': {domain:'amazon.nl', name:'荷兰'},
+  'A1C4SOXMSFLBCM': {domain:'amazon.sa', name:'沙特'},
+  'A2VIGQ35RCS4UG': {domain:'amazon.ae', name:'阿联酋'},
+  'A1AM78C64UM0Y8': {domain:'amazon.com.mx', name:'墨西哥'},
+};
+
+function getAmzSearchUrl(keyword, mid){
+  const site = AMZ_SITE_MAP[mid] || AMZ_SITE_MAP['ATVPDKIKX0DER'];
+  return 'https://www.'+site.domain+'/s?k='+encodeURIComponent(keyword);
+}
 
 function getAmzSugHistory(){
   try{return JSON.parse(localStorage.getItem(AMZ_SUG_HIST_KEY)||'[]');}catch(e){return [];}
@@ -1100,6 +1133,7 @@ function escapeHtml(s){
 async function searchAmzSug(keyword){
   const input=document.getElementById('amzSugInput');
   const site=document.getElementById('amzSugSite').value;
+  const depth=document.getElementById('amzSugDepth').checked;
   const btn=document.getElementById('amzSugBtn');
   const results=document.getElementById('amzSugResults');
   const countEl=document.getElementById('amzSugCount');
@@ -1107,6 +1141,10 @@ async function searchAmzSug(keyword){
 
   const kw=(keyword||input.value||'').trim();
   if(!kw){results.innerHTML='<div class="amz-sug-empty">请输入关键词</div>';return;}
+
+  // 取消之前的请求
+  if(amzSugAbortController){amzSugAbortController.abort();}
+  amzSugAbortController=new AbortController();
 
   input.value=kw;
   btn.disabled=true;
@@ -1116,27 +1154,49 @@ async function searchAmzSug(keyword){
   countEl.textContent='';
 
   try {
-    // 先用本地缓存
-    const cacheKey=kw.toLowerCase()+'|'+site;
+    const cacheKey=kw.toLowerCase()+'|'+site+'|'+(depth?'deep':'normal');
     if(AMZ_SUG_CACHE[cacheKey]){
-      renderAmzSugResults(AMZ_SUG_CACHE[cacheKey]);
+      renderAmzSugResults(AMZ_SUG_CACHE[cacheKey],site);
       btn.disabled=false;btn.textContent='搜索';
       saveAmzSugHistory(kw);
       return;
     }
 
-    // 通过后端代理请求
-    const resp=await fetch('/api/amz-suggestions?prefix='+encodeURIComponent(kw)+'&mid='+site+'&limit=11');
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const data=await resp.json();
+    let allWords=[];
+    if(depth){
+      // 深度挖掘：先取基础结果，再用每个结果+a-z追加搜索
+      results.innerHTML='<div class="amz-sug-loading">深度挖掘中，大约需要10-20秒...</div>';
+      const baseWords=await fetchAmzSug(kw, site, amzSugAbortController.signal);
+      allWords=[...baseWords];
+      
+      // 用每个基础结果 + 字母a-z扩展（取前5个基础词扩展，避免请求太多）
+      const expandWords=baseWords.slice(0,5);
+      const letters='abcdefghijklmnopqrstuvwxyz'.split('');
+      let completed=0;
+      const total=expandWords.length;
+      
+      for(const baseWord of expandWords){
+        for(const letter of letters){
+          if(amzSugAbortController.signal.aborted)break;
+          try{
+            const more=await fetchAmzSug(baseWord+' '+letter, site, amzSugAbortController.signal);
+            for(const w of more){if(!allWords.includes(w))allWords.push(w);}
+          }catch(e){/* 忽略单个失败 */}
+        }
+        completed++;
+        results.innerHTML='<div class="amz-sug-loading">深度挖掘中... ('+completed+'/'+total+')<br>已找到 '+allWords.length+' 个词</div>';
+      }
+    }else{
+      allWords=await fetchAmzSug(kw, site, amzSugAbortController.signal);
+    }
 
-    if(data.error)throw new Error(data.error);
+    if(amzSugAbortController.signal.aborted)return;
 
-    const words=(data.suggestions||[]).map(s=>s.value).filter(Boolean);
-    AMZ_SUG_CACHE[cacheKey]=words;
-    renderAmzSugResults(words);
+    AMZ_SUG_CACHE[cacheKey]=allWords;
+    renderAmzSugResults(allWords, site);
     saveAmzSugHistory(kw);
   } catch(err){
+    if(err.name==='AbortError')return;
     results.innerHTML='<div class="amz-sug-error">获取失败: '+escapeHtml(err.message)+'<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:inline-block">部署到 Cloudflare Pages 后可正常使用</span></div>';
   } finally {
     btn.disabled=false;
@@ -1144,10 +1204,19 @@ async function searchAmzSug(keyword){
   }
 }
 
-function renderAmzSugResults(words){
+async function fetchAmzSug(prefix, mid, signal){
+  const resp=await fetch('/api/amz-suggestions?prefix='+encodeURIComponent(prefix)+'&mid='+mid+'&limit=11', {signal});
+  if(!resp.ok)throw new Error('HTTP '+resp.status);
+  const data=await resp.json();
+  if(data.error)throw new Error(data.error);
+  return (data.suggestions||[]).map(s=>s.value).filter(Boolean);
+}
+
+function renderAmzSugResults(words, mid){
   const results=document.getElementById('amzSugResults');
   const countEl=document.getElementById('amzSugCount');
   const copyAllBtn=document.getElementById('amzSugCopyAll');
+  const siteMid = mid || document.getElementById('amzSugSite').value;
   amzSugCurrentWords=words;
 
   if(words.length===0){
@@ -1160,13 +1229,15 @@ function renderAmzSugResults(words){
   countEl.textContent='共 '+words.length+' 个联想词';
   copyAllBtn.disabled=false;
 
-  results.innerHTML='<ul class="amz-sug-list">'+words.map((w,i)=>
-    '<li class="amz-sug-item" onclick="copySingleSug(\''+w.replace(/'/g,"\\'")+'\',this)">'+
+  results.innerHTML='<ul class="amz-sug-list">'+words.map((w,i)=>{
+    const searchUrl=getAmzSearchUrl(w, siteMid);
+    return '<li class="amz-sug-item">'+
       '<span class="idx">'+(i+1)+'</span>'+
       '<span class="word">'+escapeHtml(w)+'</span>'+
-      '<button class="copy-btn" onclick="event.stopPropagation();copySingleSug(\''+w.replace(/'/g,"\\'")+'\',this)">复制</button>'+
-    '</li>'
-  ).join('')+'</ul>';
+      '<a class="search-btn" href="'+searchUrl+'" target="_blank" rel="noopener" title="在亚马逊搜索">🔍 搜索</a>'+
+      '<button class="copy-btn" onclick="copySingleSug(\''+w.replace(/'/g,"\\'")+'\',this)">复制</button>'+
+    '</li>';
+  }).join('')+'</ul>';
 }
 
 function copySingleSug(word,el){
