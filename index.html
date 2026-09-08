@@ -275,6 +275,42 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .hs-ext-links a{font-size:10px;padding:3px 9px;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;text-decoration:none;font-weight:600;transition:.12s}
 .hs-ext-links a:hover{background:#16a34a;color:#fff}
 
+/* AI翻译器 */
+.qt-settings{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:13px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap;display:flex;align-items:center;gap:3px;line-height:1}
+.qt-settings:hover{background:var(--primary-l);border-color:#bfdbfe;color:var(--primary-d)}
+.tr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tr-col{display:flex;flex-direction:column;gap:6px}
+.tr-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tr-label{font-size:11px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:5px}
+.tr-lang-tag{font-size:9px;font-weight:600;padding:1px 7px;border-radius:10px;background:#f1f5f9;color:var(--muted)}
+.tr-hint{font-size:10px;color:var(--muted)}
+.tr-head select{font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;outline:none;color:var(--muted);background:#fff}
+.tr-grid textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:inherit;font-size:12px;resize:vertical;min-height:120px;outline:none;transition:.12s;line-height:1.5}
+.tr-grid textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.tr-grid textarea[readonly]{background:#f8fafc;color:var(--ink);cursor:default}
+.tr-actions{display:flex;align-items:center;gap:10px;margin-top:10px}
+.tr-btn{padding:6px 18px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.12s}
+.tr-btn:hover{background:var(--primary-d)}
+.tr-btn:disabled{opacity:.5;cursor:not-allowed}
+.tr-status{font-size:11px;color:var(--muted)}
+.tr-status.error{color:var(--red)}
+.tr-status.success{color:var(--green)}
+.tr-settings-modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center;z-index:999}
+.tr-settings-modal .box{background:#fff;border-radius:12px;padding:24px 28px;width:360px;max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,.15)}
+.tr-settings-modal h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.tr-settings-modal .field{margin-bottom:12px}
+.tr-settings-modal label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.tr-settings-modal input{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;font-family:inherit}
+.tr-settings-modal input:focus{border-color:var(--primary)}
+.tr-settings-modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.tr-settings-modal button{padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none}
+.tr-settings-modal .save{background:var(--primary);color:#fff}
+.tr-settings-modal .save:hover{background:var(--primary-d)}
+.tr-settings-modal .cancel{background:#fff;border:1px solid var(--border);color:var(--ink)}
+.tr-settings-modal .cancel:hover{background:#f1f5f9}
+.tr-settings-modal .hint{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5}
+@media(max-width:560px){.tr-grid{grid-template-columns:1fr}}
+
 /* placeholder */
 .qt-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:80px;color:var(--muted);text-align:center;gap:6px}
 .qt-placeholder .icon{font-size:24px}
@@ -592,6 +628,37 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
             </div>
             <div class="amz-sug-results" id="amzSugResults">
               <div class="amz-sug-empty">输入关键词搜索亚马逊下拉联想词</div>
+            </div>
+          </div>
+
+          <!-- AI翻译器 -->
+          <div class="qt-card" data-id="ai-translator" draggable="true">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🌐</span><h3>AI翻译器</h3><button class="qt-settings" onclick="openTranslatorSettings()" title="API 设置">⚙</button><button class="qt-clear" onclick="clearTranslator()">✕ 清除</button></div>
+            <div class="tr-grid">
+              <div class="tr-col">
+                <div class="tr-head">
+                  <span class="tr-label">原文 <span class="tr-lang-tag" id="trSrcLang">自动检测</span></span>
+                  <span class="tr-hint">输入文本自动识别语言</span>
+                </div>
+                <textarea id="trSrc" placeholder="输入要翻译的文本，语言自动识别...&#10;Ctrl+Enter 快速翻译"></textarea>
+              </div>
+              <div class="tr-col">
+                <div class="tr-head">
+                  <span class="tr-label">译文</span>
+                  <select id="trTargetLang">
+                    <option value="中文" selected>中文</option>
+                    <option value="英文">English</option>
+                    <option value="日文">日本語</option>
+                    <option value="德文">Deutsch</option>
+                    <option value="法文">Français</option>
+                  </select>
+                </div>
+                <textarea id="trDst" placeholder="译文将显示在这里..." readonly></textarea>
+              </div>
+            </div>
+            <div class="tr-actions">
+              <button class="tr-btn" id="trBtn" onclick="doTranslate()">翻译</button>
+              <span class="tr-status" id="trStatus"></span>
             </div>
           </div>
 
@@ -1179,10 +1246,185 @@ function exportAmzSugCsv(){
   URL.revokeObjectURL(url);
 }
 
+/* ===== AI翻译器 ===== */
+const TR_SETTINGS_KEY='ai_translator_settings';
+const TR_DEFAULT_SETTINGS={baseUrl:'https://aiapi.fonken.net',model:'spark lite',apiKey:''};
+
+function getTranslatorSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem(TR_SETTINGS_KEY))||{};
+    return {baseUrl:s.baseUrl??TR_DEFAULT_SETTINGS.baseUrl,model:s.model??TR_DEFAULT_SETTINGS.model,apiKey:s.apiKey??TR_DEFAULT_SETTINGS.apiKey};
+  }catch(e){return {...TR_DEFAULT_SETTINGS};}
+}
+function saveTranslatorSettings(s){localStorage.setItem(TR_SETTINGS_KEY,JSON.stringify(s));}
+
+// 语言自动检测：基于 Unicode 范围统计主导脚本
+function detectLanguage(text){
+  if(!text||!text.trim())return null;
+  const counts={zh:0,ja:0,ko:0,cyrillic:0,arabic:0,latin:0};
+  for(const ch of text){
+    const code=ch.codePointAt(0);
+    // CJK 统一表意文字（中日韩共用，但日韩文中汉字占比通常远低于平假名/片假名/韩文音节）
+    if((code>=0x4E00&&code<=0x9FFF)||(code>=0x3400&&code<=0x4DBF)||(code>=0x20000&&code<=0x2A6DF)){counts.zh++;continue;}
+    if(code>=0x3040&&code<=0x309F){counts.ja++;continue;} // 平假名
+    if(code>=0x30A0&&code<=0x30FF){counts.ja++;continue;} // 片假名
+    if(code>=0xAC00&&code<=0xD7AF){counts.ko++;continue;} // 韩文音节
+    if(code>=0x0400&&code<=0x04FF){counts.cyrillic++;continue;}
+    if(code>=0x0600&&code<=0x06FF){counts.arabic++;continue;}
+    if((code>=0x0041&&code<=0x005A)||(code>=0x0061&&code<=0x007A)||(code>=0x00C0&&code<=0x024F)){counts.latin++;}
+  }
+  // 优先判定日韩专属脚本（避免被 CJK 汉字盖过）
+  if(counts.ja>0||counts.ko>0){
+    if(counts.ja>=counts.ko)return '日文';
+    return '韩文';
+  }
+  // 没有日韩专属脚本时，CJK 视为中文
+  if(counts.zh>0)return '中文';
+  if(counts.cyrillic>0)return '俄文';
+  if(counts.arabic>0)return '阿拉伯文';
+  if(counts.latin>0)return '英文';
+  // 全是数字/标点等，无法判断
+  return null;
+}
+
+function initTranslator(){
+  const src=document.getElementById('trSrc');
+  const targetSel=document.getElementById('trTargetLang');
+  const langTag=document.getElementById('trSrcLang');
+  let detectTimer=null;
+  // 记录自动切换过的源语言，用于在源语言变化时回切目标语言
+  let autoSwitchedFrom=null;
+
+  function updateDetect(){
+    const text=src.value;
+    const detected=detectLanguage(text);
+    langTag.textContent=detected||'自动检测';
+    // 源语言为中文时，目标自动切到英文
+    if(detected==='中文'&&targetSel.value==='中文'){
+      targetSel.value='英文';
+      autoSwitchedFrom='中文';
+    }else if(detected&&detected!=='中文'&&targetSel.value==='英文'&&autoSwitchedFrom==='中文'){
+      // 源语言从中文变其他，且目标仍为英文（用户没主动改过），切回中文
+      targetSel.value='中文';
+      autoSwitchedFrom=detected;
+    }else if(detected&&detected!=='中文'){
+      autoSwitchedFrom=detected;
+    }
+  }
+  function onInput(){
+    clearTimeout(detectTimer);
+    detectTimer=setTimeout(updateDetect,200);
+  }
+  src.addEventListener('input',onInput);
+  // 用户手动改目标语言后，停止自动回切
+  targetSel.addEventListener('change',()=>{autoSwitchedFrom=null;});
+  // Ctrl/Cmd + Enter 快速翻译
+  src.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();doTranslate();}
+  });
+}
+
+async function doTranslate(){
+  const src=document.getElementById('trSrc');
+  const dst=document.getElementById('trDst');
+  const targetSel=document.getElementById('trTargetLang');
+  const btn=document.getElementById('trBtn');
+  const status=document.getElementById('trStatus');
+  function setStatus(msg,type){status.textContent=msg;status.className='tr-status'+(type?(' '+type):'');}
+
+  const text=src.value.trim();
+  if(!text){setStatus('请输入要翻译的文本','error');return;}
+  const target=targetSel.value;
+  const settings=getTranslatorSettings();
+  if(!settings.baseUrl||!settings.model||!settings.apiKey){
+    setStatus('请先在设置中填写 API 配置','error');
+    openTranslatorSettings();
+    return;
+  }
+
+  btn.disabled=true;btn.textContent='翻译中...';
+  setStatus('正在调用 AI...','');
+  dst.value='';
+
+  let baseUrl=settings.baseUrl.replace(/\/+$/,'');
+  if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
+  const url=baseUrl+'/chat/completions';
+  // 提示词尽量简洁
+  const prompt='把以下文本翻译成'+target+'：\n\n'+text;
+
+  try{
+    const res=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
+      body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
+    });
+    if(!res.ok){
+      const errText=await res.text().catch(()=>(''));
+      setStatus('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200),'error');
+      return;
+    }
+    const data=await res.json();
+    const content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    if(!content){setStatus('AI 返回空内容','error');return;}
+    dst.value=content.trim();
+    setStatus('翻译完成 ✓','success');
+  }catch(e){
+    setStatus('调用失败: '+e.message,'error');
+  }finally{
+    btn.disabled=false;btn.textContent='翻译';
+  }
+}
+
+function clearTranslator(){
+  document.getElementById('trSrc').value='';
+  document.getElementById('trDst').value='';
+  document.getElementById('trSrcLang').textContent='自动检测';
+  const s=document.getElementById('trStatus');
+  s.textContent='';s.className='tr-status';
+}
+
+function openTranslatorSettings(){
+  let modal=document.getElementById('trSettingsModal');
+  if(modal)modal.remove();
+  const s=getTranslatorSettings();
+  modal=document.createElement('div');
+  modal.className='tr-settings-modal';
+  modal.id='trSettingsModal';
+  modal.innerHTML='<div class="box"><h3>⚙ AI 翻译器 API 设置</h3>'+
+    '<div class="field"><label>API Base URL</label><input type="text" id="trSetBase" placeholder="https://aiapi.fonken.net" value="'+escapeHtml(s.baseUrl)+'"></div>'+
+    '<div class="field"><label>模型</label><input type="text" id="trSetModel" placeholder="spark lite" value="'+escapeHtml(s.model)+'"></div>'+
+    '<div class="field"><label>API Key</label><input type="password" id="trSetKey" placeholder="sk-..." value="'+escapeHtml(s.apiKey)+'"></div>'+
+    '<div class="hint">配置保存在浏览器本地 (localStorage)，仅本机生效。OpenAI 兼容协议，自动追加 /v1/chat/completions。</div>'+
+    '<div class="actions"><button class="cancel" onclick="closeTranslatorSettings()">取消</button><button class="save" onclick="saveTranslatorSettingsFromForm()">保存</button></div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+function closeTranslatorSettings(){const m=document.getElementById('trSettingsModal');if(m)m.remove();}
+function saveTranslatorSettingsFromForm(){
+  const baseUrl=document.getElementById('trSetBase').value.trim();
+  const model=document.getElementById('trSetModel').value.trim();
+  const apiKey=document.getElementById('trSetKey').value.trim();
+  saveTranslatorSettings({baseUrl,model,apiKey});
+  closeTranslatorSettings();
+  showTrToast('设置已保存');
+}
+function showTrToast(msg){
+  let t=document.getElementById('trToast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='trToast';
+    t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:8px 18px;border-radius:8px;font-size:12px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.15);opacity:0;transition:opacity .2s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>{t.style.opacity='0';},1500);
+}
+
 /* ===== 即时工具拖拽排序 ===== */
 const QT_SORT_KEY='qt_card_order';
 // 默认排序：亚马逊联想词放最前
-const QT_DEFAULT_ORDER=['amz-suggestions','title-counter','rating-calc','billing-weight','ad-bid','quick-links','hs-code'];
+const QT_DEFAULT_ORDER=['amz-suggestions','title-counter','rating-calc','billing-weight','ad-bid','quick-links','hs-code','ai-translator'];
 
 function initDragSort(){
   const grid=document.getElementById('quickGrid');
@@ -1273,7 +1515,7 @@ function saveCardOrder(){
   localStorage.setItem(QT_SORT_KEY,JSON.stringify(order));
 }
 
-function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();initDragSort();initHsCategories();document.getElementById('backBtn').onclick=goHome;}
+function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();initDragSort();initHsCategories();initTranslator();document.getElementById('backBtn').onclick=goHome;}
 init();
 </script>
 </body>
