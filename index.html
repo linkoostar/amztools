@@ -278,17 +278,17 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 /* AI翻译器 */
 .qt-settings{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:13px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap;display:flex;align-items:center;gap:3px;line-height:1}
 .qt-settings:hover{background:var(--primary-l);border-color:#bfdbfe;color:var(--primary-d)}
-.tr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tr-col{display:flex;flex-direction:column;gap:6px}
+.tr-grid{display:flex;flex-direction:column;gap:8px}
+.tr-col{display:flex;flex-direction:column;gap:5px}
 .tr-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tr-label{font-size:11px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:5px}
 .tr-lang-tag{font-size:9px;font-weight:600;padding:1px 7px;border-radius:10px;background:#f1f5f9;color:var(--muted)}
 .tr-hint{font-size:10px;color:var(--muted)}
 .tr-head select{font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;outline:none;color:var(--muted);background:#fff}
-.tr-grid textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:inherit;font-size:12px;resize:vertical;min-height:120px;outline:none;transition:.12s;line-height:1.5}
+.tr-grid textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;resize:vertical;min-height:48px;max-height:120px;outline:none;transition:.12s;line-height:1.5}
 .tr-grid textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
 .tr-grid textarea[readonly]{background:#f8fafc;color:var(--ink);cursor:default}
-.tr-actions{display:flex;align-items:center;gap:10px;margin-top:10px}
+.tr-actions{display:flex;align-items:center;gap:10px;margin-top:4px}
 .tr-btn{padding:6px 18px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.12s}
 .tr-btn:hover{background:var(--primary-d)}
 .tr-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -309,7 +309,6 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .tr-settings-modal .cancel{background:#fff;border:1px solid var(--border);color:var(--ink)}
 .tr-settings-modal .cancel:hover{background:#f1f5f9}
 .tr-settings-modal .hint{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5}
-@media(max-width:560px){.tr-grid{grid-template-columns:1fr}}
 
 /* placeholder */
 .qt-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:80px;color:var(--muted);text-align:center;gap:6px}
@@ -1248,7 +1247,7 @@ function exportAmzSugCsv(){
 
 /* ===== AI翻译器 ===== */
 const TR_SETTINGS_KEY='ai_translator_settings';
-const TR_DEFAULT_SETTINGS={baseUrl:'https://aiapi.fonken.net',model:'spark lite',apiKey:''};
+const TR_DEFAULT_SETTINGS={baseUrl:'https://aiapi.fonken.net',model:'Spark Lite',apiKey:''};
 
 function getTranslatorSettings(){
   try{
@@ -1392,7 +1391,7 @@ function openTranslatorSettings(){
   modal.id='trSettingsModal';
   modal.innerHTML='<div class="box"><h3>⚙ AI 翻译器 API 设置</h3>'+
     '<div class="field"><label>API Base URL</label><input type="text" id="trSetBase" placeholder="https://aiapi.fonken.net" value="'+escapeHtml(s.baseUrl)+'"></div>'+
-    '<div class="field"><label>模型</label><input type="text" id="trSetModel" placeholder="spark lite" value="'+escapeHtml(s.model)+'"></div>'+
+    '<div class="field"><label>模型</label><input type="text" id="trSetModel" placeholder="Spark Lite" value="'+escapeHtml(s.model)+'"></div>'+
     '<div class="field"><label>API Key</label><input type="password" id="trSetKey" placeholder="sk-..." value="'+escapeHtml(s.apiKey)+'"></div>'+
     '<div class="hint">配置保存在浏览器本地 (localStorage)，仅本机生效。OpenAI 兼容协议，自动追加 /v1/chat/completions。</div>'+
     '<div class="actions"><button class="cancel" onclick="closeTranslatorSettings()">取消</button><button class="save" onclick="saveTranslatorSettingsFromForm()">保存</button></div></div>';
@@ -1424,7 +1423,7 @@ function showTrToast(msg){
 /* ===== 即时工具拖拽排序 ===== */
 const QT_SORT_KEY='qt_card_order';
 // 默认排序：亚马逊联想词放最前
-const QT_DEFAULT_ORDER=['amz-suggestions','title-counter','rating-calc','billing-weight','ad-bid','quick-links','hs-code','ai-translator'];
+const QT_DEFAULT_ORDER=['amz-suggestions','ai-translator','title-counter','rating-calc','billing-weight','ad-bid','quick-links','hs-code'];
 
 function initDragSort(){
   const grid=document.getElementById('quickGrid');
