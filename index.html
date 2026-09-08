@@ -292,6 +292,10 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .tr-btn{padding:6px 18px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.12s}
 .tr-btn:hover{background:var(--primary-d)}
 .tr-btn:disabled{opacity:.5;cursor:not-allowed}
+.tr-copy-btn{padding:6px 14px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;transition:.12s;white-space:nowrap}
+.tr-copy-btn:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1}
+.tr-copy-btn:disabled{opacity:.5;cursor:not-allowed}
+.tr-copy-btn.copied{background:var(--green);color:#fff;border-color:var(--green)}
 .tr-status{font-size:11px;color:var(--muted)}
 .tr-status.error{color:var(--red)}
 .tr-status.success{color:var(--green)}
@@ -657,6 +661,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
             </div>
             <div class="tr-actions">
               <button class="tr-btn" id="trBtn" onclick="doTranslate()">翻译</button>
+              <button class="tr-copy-btn" id="trCopyBtn" onclick="copyTranslation()" disabled>📋 复制译文</button>
               <span class="tr-status" id="trStatus"></span>
             </div>
           </div>
@@ -1381,6 +1386,8 @@ async function doTranslate(){
     // 译文写入后自适应高度
     dst.style.height='auto';
     dst.style.height=dst.scrollHeight+'px';
+    // 启用复制按钮
+    document.getElementById('trCopyBtn').disabled=false;
     setStatus('翻译完成 ✓','success');
   }catch(e){
     setStatus('调用失败: '+e.message,'error');
@@ -1397,6 +1404,34 @@ function clearTranslator(){
   document.getElementById('trSrcLang').textContent='自动检测';
   const s=document.getElementById('trStatus');
   s.textContent='';s.className='tr-status';
+  // 禁用复制按钮并复位文案
+  const cb=document.getElementById('trCopyBtn');
+  cb.disabled=true;cb.classList.remove('copied');cb.textContent='📋 复制译文';
+}
+
+async function copyTranslation(){
+  const dst=document.getElementById('trDst');
+  const btn=document.getElementById('trCopyBtn');
+  const text=dst.value.trim();
+  if(!text)return;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      // 降级方案
+      dst.removeAttribute('readonly');
+      dst.select();document.execCommand('copy');
+      dst.setAttribute('readonly','');
+    }
+    btn.classList.add('copied');btn.textContent='✓ 已复制';
+    setTimeout(()=>{btn.classList.remove('copied');btn.textContent='📋 复制译文';},1500);
+  }catch(e){
+    // 复制失败时改用选中文本让用户手动 Ctrl+C
+    dst.removeAttribute('readonly');
+    dst.focus();dst.select();
+    dst.setAttribute('readonly','');
+    document.getElementById('trStatus').textContent='复制失败，请按 Ctrl+C 手动复制';
+  }
 }
 
 function openTranslatorSettings(){
