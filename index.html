@@ -285,7 +285,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .tr-lang-tag{font-size:9px;font-weight:600;padding:1px 7px;border-radius:10px;background:#f1f5f9;color:var(--muted)}
 .tr-hint{font-size:10px;color:var(--muted)}
 .tr-head select{font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;outline:none;color:var(--muted);background:#fff}
-.tr-grid textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;resize:vertical;min-height:48px;max-height:120px;outline:none;transition:.12s;line-height:1.5}
+.tr-grid textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;resize:vertical;min-height:96px;max-height:240px;overflow-y:hidden;outline:none;transition:.12s;line-height:1.5}
 .tr-grid textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
 .tr-grid textarea[readonly]{background:#f8fafc;color:var(--ink);cursor:default}
 .tr-actions{display:flex;align-items:center;gap:10px;margin-top:4px}
@@ -1288,11 +1288,20 @@ function detectLanguage(text){
 
 function initTranslator(){
   const src=document.getElementById('trSrc');
+  const dst=document.getElementById('trDst');
   const targetSel=document.getElementById('trTargetLang');
   const langTag=document.getElementById('trSrcLang');
   let detectTimer=null;
   // 记录自动切换过的源语言，用于在源语言变化时回切目标语言
   let autoSwitchedFrom=null;
+
+  // textarea 自适应高度：按内容撑高，限制在 min-height(96px) ~ max-height(240px)
+  function autoGrow(el){
+    el.style.height='auto';
+    el.style.height=el.scrollHeight+'px';
+  }
+  // 初始及每次输入后重算
+  autoGrow(src);autoGrow(dst);
 
   function updateDetect(){
     const text=src.value;
@@ -1311,6 +1320,7 @@ function initTranslator(){
     }
   }
   function onInput(){
+    autoGrow(src);
     clearTimeout(detectTimer);
     detectTimer=setTimeout(updateDetect,200);
   }
@@ -1321,6 +1331,8 @@ function initTranslator(){
   src.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();doTranslate();}
   });
+  // 窗口尺寸变化时重算（避免换行数改变导致高度不准）
+  window.addEventListener('resize',()=>{autoGrow(src);autoGrow(dst);});
 }
 
 async function doTranslate(){
@@ -1366,6 +1378,9 @@ async function doTranslate(){
     const content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     if(!content){setStatus('AI 返回空内容','error');return;}
     dst.value=content.trim();
+    // 译文写入后自适应高度
+    dst.style.height='auto';
+    dst.style.height=dst.scrollHeight+'px';
     setStatus('翻译完成 ✓','success');
   }catch(e){
     setStatus('调用失败: '+e.message,'error');
@@ -1375,8 +1390,10 @@ async function doTranslate(){
 }
 
 function clearTranslator(){
-  document.getElementById('trSrc').value='';
-  document.getElementById('trDst').value='';
+  const src=document.getElementById('trSrc'),dst=document.getElementById('trDst');
+  src.value='';dst.value='';
+  // 清空后重置回最小高度
+  src.style.height='';dst.style.height='';
   document.getElementById('trSrcLang').textContent='自动检测';
   const s=document.getElementById('trStatus');
   s.textContent='';s.className='tr-status';
