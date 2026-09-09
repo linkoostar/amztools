@@ -96,12 +96,19 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .qt-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .qt-head .icon{font-size:16px}
 .qt-head h3{font-size:13px;font-weight:600}
-.qt-head .drag-handle{cursor:grab;font-size:13px;color:var(--muted);padding:0 4px;user-select:none;opacity:0;transition:.15s}
-.qt-card:hover .drag-handle{opacity:1}
+.qt-head .drag-handle{display:none;cursor:grab;font-size:13px;color:var(--muted);padding:0 4px;user-select:none}
 .qt-head .drag-handle:active{cursor:grabbing}
 .qt-card.dragging{opacity:.4;transform:scale(.98)}
 .qt-card.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.15)}
 .quick-grid{transition:all .2s}
+.section-actions{display:flex;align-items:center;gap:10px}
+.sort-btn{border:1px solid var(--border);background:var(--card);color:var(--ink);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;transition:.15s}
+.sort-btn:hover{border-color:var(--primary);color:var(--primary)}
+.sort-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.quick-grid.sort-mode .qt-head .drag-handle{display:inline-block}
+.quick-grid.sort-mode .qt-card{cursor:grab;outline:1px dashed var(--border);outline-offset:2px}
+.quick-grid.sort-mode .qt-card:active{cursor:grabbing}
+.quick-grid.sort-mode .qt-card.dragging{outline-color:var(--primary)}
 .qt-clear{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap;display:flex;align-items:center;gap:3px}
 .qt-clear:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
 
@@ -383,12 +390,15 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
       <div class="section">
         <div class="section-head">
           <h2>⚡ 即时工具</h2>
-          <span class="hint">首页直接使用，无需跳转</span>
+          <div class="section-actions">
+            <span class="hint">首页直接使用，无需跳转</span>
+            <button id="toggleSortMode" class="sort-btn" onclick="toggleSortMode()">卡片排序</button>
+          </div>
         </div>
         <div class="quick-grid" id="quickGrid">
 
           <!-- 标题字符计算器 -->
-          <div class="qt-card" data-id="title-counter" draggable="true">
+          <div class="qt-card" data-id="title-counter">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">📝</span><h3>标题字符计算器</h3><button class="qt-clear" onclick="clearTitleCounter()">✕ 清除</button></div>
             <div class="title-section">
               <div class="ts-head">
@@ -418,7 +428,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 评分星级计算器 -->
-          <div class="qt-card" data-id="rating-calc" draggable="true">
+          <div class="qt-card" data-id="rating-calc">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">⭐</span><h3>评分星级计算</h3><button class="qt-clear" onclick="clearRatingCalculator()">✕ 清除</button></div>
             <div class="rating-kpis">
               <div class="rkpi"><span class="rv" id="rDisplay">0.00</span><span class="rl">显示评分</span></div>
@@ -439,7 +449,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 计费重计算器 -->
-          <div class="qt-card" data-id="billing-weight" draggable="true">
+          <div class="qt-card" data-id="billing-weight">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">⚖️</span><h3>计费重计算器</h3><button class="qt-clear" onclick="clearBillingWeight()">✕ 清除</button></div>
             <div class="bw-section">
               <div class="bw-label">尺寸 <span class="unit-tag" id="bwDimTag">CM</span></div>
@@ -497,7 +507,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 广告出价试算 -->
-          <div class="qt-card" data-id="ad-bid" draggable="true">
+          <div class="qt-card" data-id="ad-bid">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🎯</span><h3>广告出价试算</h3><button class="qt-clear" onclick="clearAdBid()">✕ 清除</button></div>
             <div class="ab-row">
               <label>正常出价(CPC)</label>
@@ -515,7 +525,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 快捷导航 -->
-          <div class="qt-card" data-id="quick-links" draggable="true">
+          <div class="qt-card" data-id="quick-links">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔗</span><h3>快捷导航</h3></div>
             <div class="nav-groups">
               <div class="nav-group">
@@ -570,7 +580,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- HS编码查询 -->
-          <div class="qt-card" data-id="hs-code" draggable="true">
+          <div class="qt-card" data-id="hs-code">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔍</span><h3>HS编码查询</h3><button class="qt-clear" onclick="clearHsCode()">✕ 清除</button></div>
             <div class="hs-search-box">
               <input type="text" id="hsInput" placeholder="输入产品关键词或HS编码，如 电脑 / phone / 8471" oninput="searchHsCode()">
@@ -595,7 +605,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- 亚马逊联想词 -->
-          <div class="qt-card" data-id="amz-suggestions" draggable="true">
+          <div class="qt-card" data-id="amz-suggestions">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔮</span><h3>亚马逊联想词</h3><button class="qt-clear" onclick="clearAmzSug()">✕ 清除</button></div>
             <div class="amz-sug-search">
               <input type="text" id="amzSugInput" placeholder="输入关键词，如 wireless earbuds" onkeydown="if(event.key==='Enter')searchAmzSug()">
@@ -636,7 +646,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           </div>
 
           <!-- AI翻译器 -->
-          <div class="qt-card" data-id="ai-translator" draggable="true">
+          <div class="qt-card" data-id="ai-translator">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🌐</span><h3>AI翻译器</h3><button class="qt-settings" onclick="openTranslatorSettings()" title="API 设置">⚙</button><button class="qt-clear" onclick="clearTranslator()">✕ 清除</button></div>
             <div class="tr-grid">
               <div class="tr-col">
@@ -1504,64 +1514,117 @@ const QT_SORT_KEY='qt_card_order';
 // 默认排序：亚马逊联想词放最前
 const QT_DEFAULT_ORDER=['amz-suggestions','ai-translator','title-counter','rating-calc','billing-weight','ad-bid','quick-links','hs-code'];
 
+let sortMode=false;
+let dragEl=null;
+
 function initDragSort(){
   const grid=document.getElementById('quickGrid');
   if(!grid)return;
-
-  // 应用保存的排序
+  // 仅应用保存的排序，平时不绑定拖拽事件
   applySavedOrder();
+}
 
-  // 拖拽事件
-  let dragEl=null;
+function toggleSortMode(){
+  const btn=document.getElementById('toggleSortMode');
+  const grid=document.getElementById('quickGrid');
+  if(!btn||!grid)return;
+  sortMode=!sortMode;
+  if(sortMode){
+    btn.textContent='保存排序';
+    btn.classList.add('active');
+    grid.classList.add('sort-mode');
+    enableDragEvents();
+    showTrToast('已进入排序模式，拖动卡片调整顺序');
+  }else{
+    btn.textContent='卡片排序';
+    btn.classList.remove('active');
+    grid.classList.remove('sort-mode');
+    disableDragEvents();
+    saveCardOrder();
+    showTrToast('排序已保存');
+  }
+}
+
+function enableDragEvents(){
+  const grid=document.getElementById('quickGrid');
+  if(!grid)return;
   const cards=grid.querySelectorAll('.qt-card[data-id]');
-
   cards.forEach(card=>{
-    card.addEventListener('dragstart',e=>{
-      dragEl=card;
-      card.classList.add('dragging');
-      e.dataTransfer.effectAllowed='move';
-      e.dataTransfer.setData('text/plain',card.dataset.id);
-    });
-
-    card.addEventListener('dragend',()=>{
-      card.classList.remove('dragging');
-      grid.querySelectorAll('.qt-card').forEach(c=>c.classList.remove('drag-over'));
-      dragEl=null;
-      saveCardOrder();
-    });
-
-    card.addEventListener('dragover',e=>{
-      e.preventDefault();
-      e.dataTransfer.dropEffect='move';
-      if(dragEl && dragEl!==card){
-        card.classList.add('drag-over');
-      }
-    });
-
-    card.addEventListener('dragleave',e=>{
-      // 只有真正离开卡片时才移除样式
-      const rect=card.getBoundingClientRect();
-      const x=e.clientX,y=e.clientY;
-      if(x<rect.left||x>rect.right||y<rect.top||y>rect.bottom){
-        card.classList.remove('drag-over');
-      }
-    });
-
-    card.addEventListener('drop',e=>{
-      e.preventDefault();
-      card.classList.remove('drag-over');
-      if(dragEl && dragEl!==card){
-        // 确定插入位置：根据鼠标在卡片的上半/下半部分
-        const rect=card.getBoundingClientRect();
-        const midY=rect.top+rect.height/2;
-        if(e.clientY<midY){
-          grid.insertBefore(dragEl,card);
-        }else{
-          grid.insertBefore(dragEl,card.nextSibling);
-        }
-      }
-    });
+    card.setAttribute('draggable','true');
+    card.addEventListener('dragstart',onDragStart);
+    card.addEventListener('dragend',onDragEnd);
+    card.addEventListener('dragover',onDragOver);
+    card.addEventListener('dragleave',onDragLeave);
+    card.addEventListener('drop',onDrop);
   });
+}
+
+function disableDragEvents(){
+  const grid=document.getElementById('quickGrid');
+  if(!grid)return;
+  const cards=grid.querySelectorAll('.qt-card[data-id]');
+  cards.forEach(card=>{
+    card.removeAttribute('draggable');
+    card.removeEventListener('dragstart',onDragStart);
+    card.removeEventListener('dragend',onDragEnd);
+    card.removeEventListener('dragover',onDragOver);
+    card.removeEventListener('dragleave',onDragLeave);
+    card.removeEventListener('drop',onDrop);
+    card.classList.remove('dragging','drag-over');
+  });
+  dragEl=null;
+}
+
+function onDragStart(e){
+  const card=e.currentTarget;
+  dragEl=card;
+  card.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',card.dataset.id);
+}
+
+function onDragEnd(e){
+  const card=e.currentTarget;
+  card.classList.remove('dragging');
+  const grid=document.getElementById('quickGrid');
+  if(grid)grid.querySelectorAll('.qt-card').forEach(c=>c.classList.remove('drag-over'));
+  dragEl=null;
+}
+
+function onDragOver(e){
+  const card=e.currentTarget;
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  if(dragEl && dragEl!==card){
+    card.classList.add('drag-over');
+  }
+}
+
+function onDragLeave(e){
+  const card=e.currentTarget;
+  // 只有真正离开卡片时才移除样式
+  const rect=card.getBoundingClientRect();
+  const x=e.clientX,y=e.clientY;
+  if(x<rect.left||x>rect.right||y<rect.top||y>rect.bottom){
+    card.classList.remove('drag-over');
+  }
+}
+
+function onDrop(e){
+  const card=e.currentTarget;
+  const grid=document.getElementById('quickGrid');
+  e.preventDefault();
+  card.classList.remove('drag-over');
+  if(dragEl && dragEl!==card && grid){
+    // 确定插入位置：根据鼠标在卡片的上半/下半部分
+    const rect=card.getBoundingClientRect();
+    const midY=rect.top+rect.height/2;
+    if(e.clientY<midY){
+      grid.insertBefore(dragEl,card);
+    }else{
+      grid.insertBefore(dragEl,card.nextSibling);
+    }
+  }
 }
 
 function applySavedOrder(){
