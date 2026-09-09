@@ -130,6 +130,20 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .dual-total .dt-label{font-size:11px;font-weight:700;color:var(--primary-d)}
 .dual-total .dt-stat{font-size:11px;color:var(--muted)}
 .dual-total .dt-stat b{color:var(--ink);font-size:13px;margin-left:2px}
+.tc-translate-bar{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;flex-wrap:wrap}
+.tc-chk{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;user-select:none}
+.tc-chk input{cursor:pointer}
+.tc-translate-hint{font-size:10px;color:var(--muted);margin-left:auto}
+.tc-trans-wrap{margin-top:6px;padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px}
+.tc-trans-wrap.hidden{display:none}
+.tc-trans-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.tc-trans-label{font-size:10px;font-weight:600;color:var(--primary-d)}
+.tc-trans-copy{background:none;border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;cursor:pointer;color:var(--muted)}
+.tc-trans-copy:hover{border-color:var(--primary);color:var(--primary)}
+.tc-trans-out{font-size:12px;line-height:1.5;color:var(--ink);word-break:break-word;white-space:pre-wrap;min-height:16px}
+.tc-trans-out.empty{color:var(--muted);font-style:italic}
+.tc-trans-out.loading::after{content:'翻译中...';color:var(--muted)}
+.tc-trans-out.error{color:var(--red)}
 
 /* 评分计算器 */
 .rating-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
@@ -400,6 +414,17 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
           <!-- 标题字符计算器 -->
           <div class="qt-card" data-id="title-counter">
             <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">📝</span><h3>标题字符计算器</h3><button class="qt-clear" onclick="clearTitleCounter()">✕ 清除</button></div>
+            <div class="tc-translate-bar">
+              <label class="tc-chk"><input type="checkbox" id="tcAutoTranslate"><span>实时翻译</span></label>
+              <select id="tcTargetLang" class="ts-limit-sel" style="width:auto">
+                <option value="中文" selected>译为 中文</option>
+                <option value="英文">译为 English</option>
+                <option value="日文">译为 日本語</option>
+                <option value="德文">译为 Deutsch</option>
+                <option value="法文">译为 Français</option>
+              </select>
+              <span class="tc-translate-hint" id="tcTranslateHint"></span>
+            </div>
             <div class="title-section">
               <div class="ts-head">
                 <div class="ts-label">主标题 <span class="limit-badge" id="mainBadge">75</span></div>
@@ -407,6 +432,10 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <input type="number" class="ts-limit-sel hidden" id="mainCustom" value="75" min="1" max="500" style="width:50px">
               </div>
               <textarea id="mainTitleInput" placeholder="品牌+核心词+产品类型..."></textarea>
+              <div class="tc-trans-wrap hidden" id="mainTransWrap">
+                <div class="tc-trans-head"><span class="tc-trans-label">主标题译文</span><button class="tc-trans-copy" id="mainTransCopy" onclick="copyTitleTranslation('main')">📋</button></div>
+                <div class="tc-trans-out" id="mainTransOut"></div>
+              </div>
               <div class="ts-stats"><span class="ts-stat">字符<b id="mainChars">0</b></span><span class="ts-stat">字节<b id="mainBytes">0</b></span><span class="ts-stat">词<b id="mainWords">0</b></span></div>
               <div class="ts-bar"><div class="ts-bar-fill" id="mainBar"></div></div>
               <div class="ts-status" id="mainStatus"></div>
@@ -418,6 +447,10 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <input type="number" class="ts-limit-sel hidden" id="subCustom" value="125" min="1" max="500" style="width:50px">
               </div>
               <textarea id="subTitleInput" placeholder="特性、用途、规格补充..."></textarea>
+              <div class="tc-trans-wrap hidden" id="subTransWrap">
+                <div class="tc-trans-head"><span class="tc-trans-label">副标题译文</span><button class="tc-trans-copy" id="subTransCopy" onclick="copyTitleTranslation('sub')">📋</button></div>
+                <div class="tc-trans-out" id="subTransOut"></div>
+              </div>
               <div class="ts-stats"><span class="ts-stat">字符<b id="subChars">0</b></span><span class="ts-stat">字节<b id="subBytes">0</b></span><span class="ts-stat">词<b id="subWords">0</b></span></div>
               <div class="ts-bar"><div class="ts-bar-fill" id="subBar"></div></div>
               <div class="ts-status" id="subStatus"></div>
@@ -725,6 +758,7 @@ function initTitleCounter(){
   const mi=document.getElementById('mainTitleInput'),si=document.getElementById('subTitleInput');
   const ml=document.getElementById('mainLimitSel'),sl=document.getElementById('subLimitSel');
   const mc=document.getElementById('mainCustom'),sc=document.getElementById('subCustom');
+  const tcChk=document.getElementById('tcAutoTranslate'),tcTarget=document.getElementById('tcTargetLang'),tcHint=document.getElementById('tcTranslateHint');
   function gl(sel,cus){if(sel.value==='custom')return parseInt(cus.value)||0;return parseInt(sel.value)||0;}
   function upSingle(input,p,sel,cus,badgeId){
     const t=input.value,chars=t.length,bytes=new Blob([t]).size,words=t.trim()?t.trim().split(/\s+/).length:0;
@@ -748,7 +782,87 @@ function initTitleCounter(){
     const mo=mi.value.length>gl(ml,mc),so=si.value.length>gl(sl,sc);
     document.getElementById('totalStatus').innerHTML=tc===0?'<span style="color:var(--muted)">请输入标题</span>':(mo||so)?'<span style="color:var(--red)">✗有标题超限</span>':'<span style="color:var(--green)">✓主副标题均符合</span>';
   }
-  [mi,si].forEach(e=>e.addEventListener('input',update));
+  // ===== 实时翻译 =====
+  // 目标语言自适应：源是中文则译为英文，否则默认中文；用户手动改过后不再自动切
+  let userPickedTarget=false;
+  // 防抖 token：每次请求递增，老请求结果会被丢弃
+  let mainToken=0,subToken=0;
+  let mainTimer=null,subTimer=null;
+  function setTransState(prefix,state,msg){
+    const out=document.getElementById(prefix+'TransOut');
+    out.className='tc-trans-out'+(state?(' '+state):'');
+    out.textContent=msg||'';
+    // 仅成功状态启用复制按钮；loading/error/empty 都禁用
+    document.getElementById(prefix+'TransCopy').disabled=(state!=='');
+  }
+  function translateOne(prefix,input){
+    if(prefix==='main'){mainToken++;}else{subToken++;}
+    const token=prefix==='main'?mainToken:subToken;
+    const text=input.value.trim();
+    const wrap=document.getElementById(prefix+'TransWrap');
+    const out=document.getElementById(prefix+'TransOut');
+    if(!text){
+      out.className='tc-trans-out empty';
+      out.textContent='（无内容）';
+      document.getElementById(prefix+'TransCopy').disabled=true;
+      return;
+    }
+    wrap.classList.remove('hidden');
+    setTransState(prefix,'loading','');
+    const target=tcTarget.value;
+    translateText(text,target).then(r=>{
+      if(token!==(prefix==='main'?mainToken:subToken))return;
+      if(!r.content){setTransState(prefix,'empty','（译文为空）');return;}
+      setTransState(prefix,'',r.content);
+    }).catch(e=>{
+      if(token!==(prefix==='main'?mainToken:subToken))return;
+      if(e.needSetup){setTransState(prefix,'error',e.message);openTranslatorSettings();return;}
+      setTransState(prefix,'error',e.message||'翻译失败');
+    });
+  }
+  function scheduleTranslate(prefix,input){
+    if(!tcChk.checked)return;
+    const t=prefix==='main'?mainTimer:subTimer;
+    clearTimeout(t);
+    const timer=setTimeout(()=>translateOne(prefix,input),500);
+    if(prefix==='main')mainTimer=timer;else subTimer=timer;
+  }
+  function syncAutoTarget(){
+    if(userPickedTarget)return;
+    const combined=(mi.value+' '+si.value).trim();
+    if(!combined)return;
+    const detected=detectLanguage(combined);
+    if(!detected)return;
+    // 源是中文 → 切英文；否则保持中文
+    if(detected==='中文'&&tcTarget.value!=='英文'){
+      tcTarget.value='英文';
+    }else if(detected!=='中文'&&tcTarget.value!=='中文'){
+      tcTarget.value='中文';
+    }
+  }
+  function onInput(prefix,input){
+    update();
+    syncAutoTarget();
+    scheduleTranslate(prefix,input);
+  }
+  function toggleTransUI(){
+    if(tcChk.checked){
+      document.getElementById('mainTransWrap').classList.remove('hidden');
+      document.getElementById('subTransWrap').classList.remove('hidden');
+      tcHint.textContent='已开启，输入后自动翻译';
+      translateOne('main',mi);translateOne('sub',si);
+    }else{
+      document.getElementById('mainTransWrap').classList.add('hidden');
+      document.getElementById('subTransWrap').classList.add('hidden');
+      tcHint.textContent='';
+    }
+  }
+  [mi,si].forEach(e=>e.addEventListener('input',()=>{onInput(e===mi?'main':'sub',e);}));
+  tcChk.addEventListener('change',toggleTransUI);
+  tcTarget.addEventListener('change',()=>{
+    userPickedTarget=true;
+    if(tcChk.checked){translateOne('main',mi);translateOne('sub',si);}
+  });
   ml.onchange=()=>{mc.classList.toggle('hidden',ml.value!=='custom');update();};
   sl.onchange=()=>{sc.classList.toggle('hidden',sl.value!=='custom');update();};
   [mc,sc].forEach(e=>e.addEventListener('input',update));
@@ -864,7 +978,36 @@ function initBillingWeight(){
 function clearTitleCounter(){
   document.getElementById('mainTitleInput').value='';
   document.getElementById('subTitleInput').value='';
+  // 清空译文
+  ['main','sub'].forEach(p=>{
+    const out=document.getElementById(p+'TransOut');
+    out.className='tc-trans-out empty';
+    out.textContent='（无内容）';
+    document.getElementById(p+'TransCopy').disabled=true;
+  });
   document.getElementById('mainTitleInput').dispatchEvent(new Event('input'));
+}
+
+function copyTitleTranslation(prefix){
+  const out=document.getElementById(prefix+'TransOut');
+  const text=(out.textContent||'').trim();
+  if(!text||text==='（无内容）')return;
+  const btn=document.getElementById(prefix+'TransCopy');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      btn.textContent='✓';btn.classList.add('copied');
+      setTimeout(()=>{btn.textContent='📋';btn.classList.remove('copied');},1500);
+    }).catch(()=>fallbackCopy(out,text,btn));
+  }else{
+    fallbackCopy(out,text,btn);
+  }
+  function fallbackCopy(out,text,btn){
+    const ta=document.createElement('textarea');
+    ta.value=text;document.body.appendChild(ta);
+    ta.select();try{document.execCommand('copy');btn.textContent='✓';}catch(e){}
+    setTimeout(()=>{btn.textContent='📋';},1500);
+    document.body.removeChild(ta);
+  }
 }
 function clearRatingCalculator(){
   document.getElementById('rTotalInput').value=0;
@@ -1357,6 +1500,51 @@ function initTranslator(){
   window.addEventListener('resize',()=>{autoGrow(src);autoGrow(dst);});
 }
 
+// 通用翻译：传入文本与目标语言，返回 {content, fallback}，失败抛 Error
+async function translateText(text,target){
+  const t=text.trim();
+  if(!t)throw new Error('空文本');
+  if(hasLocalTranslatorSettings()){
+    // 本地有完整配置：直调外部 API
+    const settings=getTranslatorSettings();
+    let baseUrl=settings.baseUrl.replace(/\/+$/,'');
+    if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
+    const url=baseUrl+'/chat/completions';
+    const prompt='把以下文本翻译成'+target+'：\n\n'+t;
+    const res=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
+      body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
+    });
+    if(!res.ok){
+      const errText=await res.text().catch(()=>(''));
+      throw new Error('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200));
+    }
+    const data=await res.json();
+    const content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    return {content:content.trim(),fallback:false};
+  }
+  // 本地没配置：走后端 /api/translate 兜底（用服务器环境变量）
+  const res=await fetch('/api/translate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text:t,target_lang:target})
+  });
+  if(!res.ok){
+    let errInfo='';
+    try{const e=await res.json();errInfo=e.error||JSON.stringify(e);}catch(_){errInfo=await res.text().catch(()=>(''))||'';}
+    if(res.status===400&&/配置/.test(errInfo)){
+      const err=new Error('服务器未预置兜底配置，请在⚙设置中填写自己的 API Key');
+      err.needSetup=true;
+      throw err;
+    }
+    throw new Error('翻译失败: '+res.status+' '+errInfo.slice(0,200));
+  }
+  const data=await res.json();
+  const content=(data&&data.content)||'';
+  return {content:content.trim(),fallback:true};
+}
+
 async function doTranslate(){
   const src=document.getElementById('trSrc');
   const dst=document.getElementById('trDst');
@@ -1374,58 +1562,17 @@ async function doTranslate(){
   dst.value='';
 
   try{
-    let content='';
-    let usingFallback=false;
-    if(hasLocalTranslatorSettings()){
-      // 本地有完整配置：直调外部 API
-      const settings=getTranslatorSettings();
-      let baseUrl=settings.baseUrl.replace(/\/+$/,'');
-      if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
-      const url=baseUrl+'/chat/completions';
-      const prompt='把以下文本翻译成'+target+'：\n\n'+text;
-      const res=await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
-        body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
-      });
-      if(!res.ok){
-        const errText=await res.text().catch(()=>(''));
-        setStatus('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200),'error');
-        return;
-      }
-      const data=await res.json();
-      content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-    }else{
-      // 本地没配置：走后端 /api/translate 兜底（用服务器环境变量）
-      usingFallback=true;
-      const res=await fetch('/api/translate',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text,target_lang:target})
-      });
-      if(!res.ok){
-        let errInfo='';
-        try{const e=await res.json();errInfo=e.error||JSON.stringify(e);}catch(_){errInfo=await res.text().catch(()=>(''))||'';}
-        if(res.status===400&&/配置/.test(errInfo)){
-          setStatus('服务器未预置兜底配置，请在⚙设置中填写自己的 API Key','error');
-          openTranslatorSettings();
-          return;
-        }
-        setStatus('翻译失败: '+res.status+' '+errInfo.slice(0,200),'error');
-        return;
-      }
-      const data=await res.json();
-      content=(data&&data.content)||'';
-    }
-    if(!content){setStatus('AI 返回空内容','error');return;}
-    dst.value=content.trim();
+    const r=await translateText(text,target);
+    if(!r.content){setStatus('AI 返回空内容','error');return;}
+    dst.value=r.content;
     // 译文写入后自适应高度
     dst.style.height='auto';
     dst.style.height=dst.scrollHeight+'px';
     // 启用复制按钮
     document.getElementById('trCopyBtn').disabled=false;
-    setStatus('翻译完成 ✓'+(usingFallback?'（服务器兜底）':''),'success');
+    setStatus('翻译完成 ✓'+(r.fallback?'（服务器兜底）':''),'success');
   }catch(e){
+    if(e.needSetup){setStatus(e.message,'error');openTranslatorSettings();return;}
     setStatus('调用失败: '+e.message,'error');
   }finally{
     btn.disabled=false;btn.textContent='翻译';
