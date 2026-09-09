@@ -296,6 +296,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .tr-copy-btn:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1}
 .tr-copy-btn:disabled{opacity:.5;cursor:not-allowed}
 .tr-copy-btn.copied{background:var(--green);color:#fff;border-color:var(--green)}
+.tr-source-tag{font-size:11px;color:#64748b;background:#f1f5f9;padding:4px 8px;border-radius:4px;margin-bottom:10px;line-height:1.5}
 .tr-status{font-size:11px;color:var(--muted)}
 .tr-status.error{color:var(--red)}
 .tr-status.success{color:var(--green)}
@@ -1254,13 +1255,47 @@ function exportAmzSugCsv(){
 const TR_SETTINGS_KEY='ai_translator_settings';
 const TR_DEFAULT_SETTINGS={baseUrl:'https://aiapi.fonken.net',model:'Spark Lite',apiKey:''};
 
-function getTranslatorSettings(){
+// 判断当前是否已登录（token 由 ai-title 子页登录后写入 localStorage）
+function isTranslatorAuthed(){return !!localStorage.getItem('token');}
+
+// 取翻译器配置：登录态优先走云端，否则回退到本地 localStorage
+async function getTranslatorSettings(){
+  // 未登录：使用本地配置 + 默认值兜底
+  if(!isTranslatorAuthed()){
+    try{
+      const s=JSON.parse(localStorage.getItem(TR_SETTINGS_KEY))||{};
+      return {baseUrl:s.baseUrl??TR_DEFAULT_SETTINGS.baseUrl,model:s.model??TR_DEFAULT_SETTINGS.model,apiKey:s.apiKey??TR_DEFAULT_SETTINGS.apiKey,source:'local',is_shared:false};
+    }catch(e){return {...TR_DEFAULT_SETTINGS,source:'local',is_shared:false};}
+  }
+  // 已登录：取云端配置
   try{
-    const s=JSON.parse(localStorage.getItem(TR_SETTINGS_KEY))||{};
-    return {baseUrl:s.baseUrl??TR_DEFAULT_SETTINGS.baseUrl,model:s.model??TR_DEFAULT_SETTINGS.model,apiKey:s.apiKey??TR_DEFAULT_SETTINGS.apiKey};
-  }catch(e){return {...TR_DEFAULT_SETTINGS};}
+    const res=await fetch('/api/translate-settings',{
+      headers:{'Authorization':'Bearer '+localStorage.getItem('token')}
+    });
+    if(!res.ok){
+      // 401 时清掉失效 token，下次回退本地
+      if(res.status===401){localStorage.removeItem('token');}
+      throw new Error('HTTP '+res.status);
+    }
+    const data=await res.json();
+    if(data.api_base && data.api_model && data.api_key){
+      // 云端返回的是掩码 key，本地调用时仍需要原 key——所以这里只能作为"显示值"
+      // 实际翻译调用改为走 /api/translate 后端代理，不需要在前端持有真 key
+      return {baseUrl:data.api_base,model:data.api_model,apiKey:data.api_key,source:data.source||'cloud',is_shared:!!data.is_shared};
+    }
+    // 云端没配置：回退到本地默认
+    return {baseUrl:TR_DEFAULT_SETTINGS.baseUrl,model:TR_DEFAULT_SETTINGS.model,apiKey:'',source:'none',is_shared:false};
+  }catch(e){
+    // 云端取失败：回退本地
+    try{
+      const s=JSON.parse(localStorage.getItem(TR_SETTINGS_KEY))||{};
+      return {baseUrl:s.baseUrl??TR_DEFAULT_SETTINGS.baseUrl,model:s.model??TR_DEFAULT_SETTINGS.model,apiKey:s.apiKey??TR_DEFAULT_SETTINGS.apiKey,source:'local-fallback',is_shared:false};
+    }catch(_){return {...TR_DEFAULT_SETTINGS,source:'local-fallback',is_shared:false};}
+  }
 }
-function saveTranslatorSettings(s){localStorage.setItem(TR_SETTINGS_KEY,JSON.stringify(s));}
+
+// 仅用于本地未登录场景的保存
+function saveTranslatorSettingsLocal(s){localStorage.setItem(TR_SETTINGS_KEY,JSON.stringify(s));}
 
 // 语言自动检测：基于 Unicode 范围统计主导脚本
 function detectLanguage(text){
@@ -1351,36 +1386,63 @@ async function doTranslate(){
   const text=src.value.trim();
   if(!text){setStatus('请输入要翻译的文本','error');return;}
   const target=targetSel.value;
-  const settings=getTranslatorSettings();
-  if(!settings.baseUrl||!settings.model||!settings.apiKey){
-    setStatus('请先在设置中填写 API 配置','error');
-    openTranslatorSettings();
-    return;
-  }
+  const settings=await getTranslatorSettings();
 
   btn.disabled=true;btn.textContent='翻译中...';
   setStatus('正在调用 AI...','');
   dst.value='';
 
-  let baseUrl=settings.baseUrl.replace(/\/+$/,'');
-  if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
-  const url=baseUrl+'/chat/completions';
-  // 提示词尽量简洁
-  const prompt='把以下文本翻译成'+target+'：\n\n'+text;
-
   try{
-    const res=await fetch(url,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
-      body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
-    });
-    if(!res.ok){
-      const errText=await res.text().catch(()=>(''));
-      setStatus('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200),'error');
-      return;
+    let content='';
+    if(isTranslatorAuthed()){
+      // 已登录：走后端代理 /api/translate（key 在云端，前端不持有明文）
+      const res=await fetch('/api/translate',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},
+        body:JSON.stringify({text,target_lang:target})
+      });
+      if(!res.ok){
+        let errInfo='';
+        try{const e=await res.json();errInfo=e.error||JSON.stringify(e);}catch(_){errInfo=await res.text().catch(()=>(''))||'';}
+        if(res.status===400&&/配置/.test(errInfo)){
+          setStatus('云端未配置 API，请打开设置填写','error');
+          openTranslatorSettings();
+          return;
+        }
+        if(res.status===401){
+          localStorage.removeItem('token');
+          setStatus('登录已失效，请到 AI标题文案 重新登录（已自动回退本地模式）','error');
+          return;
+        }
+        setStatus('翻译失败: '+res.status+' '+errInfo.slice(0,200),'error');
+        return;
+      }
+      const data=await res.json();
+      content=(data&&data.content)||'';
+    }else{
+      // 未登录：走本地配置直调
+      if(!settings.baseUrl||!settings.model||!settings.apiKey){
+        setStatus('请先在设置中填写 API 配置，或到 AI标题文案 登录使用云端配置','error');
+        openTranslatorSettings();
+        return;
+      }
+      let baseUrl=settings.baseUrl.replace(/\/+$/,'');
+      if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
+      const url=baseUrl+'/chat/completions';
+      const prompt='把以下文本翻译成'+target+'：\n\n'+text;
+      const res=await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
+        body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
+      });
+      if(!res.ok){
+        const errText=await res.text().catch(()=>(''));
+        setStatus('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200),'error');
+        return;
+      }
+      const data=await res.json();
+      content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     }
-    const data=await res.json();
-    const content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     if(!content){setStatus('AI 返回空内容','error');return;}
     dst.value=content.trim();
     // 译文写入后自适应高度
@@ -1388,7 +1450,8 @@ async function doTranslate(){
     dst.style.height=dst.scrollHeight+'px';
     // 启用复制按钮
     document.getElementById('trCopyBtn').disabled=false;
-    setStatus('翻译完成 ✓','success');
+    const tag=settings.is_shared?'（共享配置）':'';
+    setStatus('翻译完成 ✓ '+tag,'success');
   }catch(e){
     setStatus('调用失败: '+e.message,'error');
   }finally{
@@ -1437,27 +1500,84 @@ async function copyTranslation(){
 function openTranslatorSettings(){
   let modal=document.getElementById('trSettingsModal');
   if(modal)modal.remove();
-  const s=getTranslatorSettings();
   modal=document.createElement('div');
   modal.className='tr-settings-modal';
   modal.id='trSettingsModal';
+
+  const authed=isTranslatorAuthed();
+  // 先用本地默认值占位，再异步加载云端配置覆盖
+  let placeholderBase=TR_DEFAULT_SETTINGS.baseUrl;
+  let placeholderModel=TR_DEFAULT_SETTINGS.model;
+  let placeholderKey='';
+  try{
+    const s=JSON.parse(localStorage.getItem(TR_SETTINGS_KEY))||{};
+    if(s.baseUrl)placeholderBase=s.baseUrl;
+    if(s.model)placeholderModel=s.model;
+    if(s.apiKey)placeholderKey=s.apiKey;
+  }catch(_){}
+
   modal.innerHTML='<div class="box"><h3>⚙ AI 翻译器 API 设置</h3>'+
-    '<div class="field"><label>API Base URL</label><input type="text" id="trSetBase" placeholder="https://aiapi.fonken.net" value="'+escapeHtml(s.baseUrl)+'"></div>'+
-    '<div class="field"><label>模型</label><input type="text" id="trSetModel" placeholder="Spark Lite" value="'+escapeHtml(s.model)+'"></div>'+
-    '<div class="field"><label>API Key</label><input type="password" id="trSetKey" placeholder="sk-..." value="'+escapeHtml(s.apiKey)+'"></div>'+
-    '<div class="hint">配置保存在浏览器本地 (localStorage)，仅本机生效。OpenAI 兼容协议，自动追加 /v1/chat/completions。</div>'+
+    (authed?'<div class="tr-source-tag">已登录 · 配置保存到云端（管理员可共享）</div>':'<div class="tr-source-tag">未登录 · 配置保存到浏览器本地</div>')+
+    '<div class="field"><label>API Base URL</label><input type="text" id="trSetBase" placeholder="https://aiapi.fonken.net" value="'+escapeHtml(placeholderBase)+'"></div>'+
+    '<div class="field"><label>模型</label><input type="text" id="trSetModel" placeholder="Spark Lite" value="'+escapeHtml(placeholderModel)+'"></div>'+
+    '<div class="field"><label>API Key</label><input type="password" id="trSetKey" placeholder="sk-..." value="'+escapeHtml(placeholderKey)+'"></div>'+
+    '<div class="hint">'+(authed?'云端会自动共享给登录子账号。如需管理员预置兜底，可在 Cloudflare Pages 项目变量里设置 TR_API_BASE / TR_API_MODEL / TR_API_KEY。':'配置保存在浏览器本地 (localStorage)，仅本机生效。如需多设备共享，请到 AI标题文案 登录账号。')+'OpenAI 兼容协议。</div>'+
     '<div class="actions"><button class="cancel" onclick="closeTranslatorSettings()">取消</button><button class="save" onclick="saveTranslatorSettingsFromForm()">保存</button></div></div>';
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
+
+  // 已登录：异步加载云端配置覆盖到表单（key 显示掩码）
+  if(authed){
+    fetch('/api/translate-settings',{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>{
+        if(!data)return;
+        const baseEl=document.getElementById('trSetBase');
+        const modelEl=document.getElementById('trSetModel');
+        const keyEl=document.getElementById('trSetKey');
+        if(data.api_base)baseEl.value=data.api_base;
+        if(data.api_model)modelEl.value=data.api_model;
+        if(data.api_key)keyEl.value=data.api_key;  // 掩码值，未改则 PUT 时不更新 key
+        const tag=document.querySelector('.tr-source-tag');
+        if(tag){
+          if(data.is_shared){
+            tag.textContent='已登录 · 当前使用'+(data.source==='env'?'环境变量兜底':'管理员共享')+'配置（可在下方覆盖）';
+          }else{
+            tag.textContent='已登录 · 使用个人云端配置';
+          }
+        }
+      }).catch(()=>{});
+  }
 }
 function closeTranslatorSettings(){const m=document.getElementById('trSettingsModal');if(m)m.remove();}
-function saveTranslatorSettingsFromForm(){
+async function saveTranslatorSettingsFromForm(){
   const baseUrl=document.getElementById('trSetBase').value.trim();
   const model=document.getElementById('trSetModel').value.trim();
   const apiKey=document.getElementById('trSetKey').value.trim();
-  saveTranslatorSettings({baseUrl,model,apiKey});
-  closeTranslatorSettings();
-  showTrToast('设置已保存');
+
+  if(isTranslatorAuthed()){
+    try{
+      const res=await fetch('/api/translate-settings',{
+        method:'PUT',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},
+        body:JSON.stringify({api_base:baseUrl,api_model:model,api_key:apiKey})
+      });
+      if(!res.ok){
+        if(res.status===401){localStorage.removeItem('token');showTrToast('登录已失效，请重新登录');return;}
+        const err=await res.json().catch(()=>({}));
+        showTrToast('保存失败: '+(err.error||res.status));
+        return;
+      }
+      closeTranslatorSettings();
+      showTrToast('配置已保存到云端');
+    }catch(e){
+      showTrToast('保存失败: '+e.message);
+    }
+  }else{
+    saveTranslatorSettingsLocal({baseUrl,model,apiKey});
+    closeTranslatorSettings();
+    showTrToast('配置已保存到本地');
+  }
 }
 function showTrToast(msg){
   let t=document.getElementById('trToast');

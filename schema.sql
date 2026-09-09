@@ -63,3 +63,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sess_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sess_expires ON sessions(expires_at);
+
+-- 翻译器独立 API 配置（与 ai-title 文案工具的 user_settings 隔离，避免互相覆盖）
+CREATE TABLE IF NOT EXISTS translator_settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE,
+  tr_api_base TEXT DEFAULT '',
+  tr_api_model TEXT DEFAULT '',
+  tr_api_key TEXT DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
