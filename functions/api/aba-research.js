@@ -79,7 +79,7 @@ export async function onRequestPost(context) {
     market: 'COM',
     q: '',
     keywordBidMatchType: 'exact',
-    order: { field: 'searchRank', desc: true },
+    order: { field: 'searchfrequencyrank', desc: false },
     ...body
   };
   // 去掉 cookie 字段，不要传给上游
