@@ -303,6 +303,14 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .gt-search-box button:hover{background:var(--primary-d)}
 .gt-search-box button:disabled{background:#94a3b8;cursor:not-allowed}
 
+.gt-toolbar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;font-size:11px}
+.gt-count{color:var(--muted);font-weight:500}
+.gt-actions{display:flex;gap:6px}
+.gt-sort-btn,.gt-copy-btn,.gt-export-btn{padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;background:#fff;color:var(--ink);transition:.12s}
+.gt-sort-btn:hover,.gt-copy-btn:hover,.gt-export-btn:hover{background:var(--primary-l);border-color:var(--primary);color:var(--primary)}
+.gt-export-btn{background:var(--green);color:#fff;border-color:var(--green)}
+.gt-export-btn:hover{background:#16a34a;border-color:#16a34a}
+
 .gt-results{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
 .gt-empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:12px}
 .gt-loading{padding:20px 10px;text-align:center;color:var(--primary);font-size:12px}
@@ -577,9 +585,9 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
             </table>
           </div>
 
-          <!-- 关键词分析 -->
+          <!-- Google 关键词洞察 -->
           <div class="qt-card" data-id="google-trends">
-            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔍</span><h3>关键词分析</h3><button class="qt-clear" onclick="clearGoogleTrends()">✕ 清除</button></div>
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔍</span><h3>Google 关键词洞察</h3><button class="qt-clear" onclick="clearGoogleTrends()">✕ 清除</button></div>
             <div class="gt-search-box">
               <input type="text" id="gtKeyword" placeholder="输入关键词，如 wireless earbuds" onkeydown="if(event.key==='Enter')searchGoogleTrends()">
               <select id="gtMarket">
@@ -593,6 +601,15 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <option value="">全球</option>
               </select>
               <button onclick="searchGoogleTrends()">查询</button>
+            </div>
+            <div class="gt-toolbar" id="gtToolbar" style="display:none;">
+              <span class="gt-count" id="gtCount"></span>
+              <div class="gt-actions">
+                <button class="gt-sort-btn" onclick="sortGtKeywords('volume')">按搜索量排序</button>
+                <button class="gt-sort-btn" onclick="sortGtKeywords('bid')">按竞价排序</button>
+                <button class="gt-copy-btn" onclick="copyAllGtKeywords()">复制全部</button>
+                <button class="gt-export-btn" onclick="exportGtKeywordsCsv()">导出CSV</button>
+              </div>
             </div>
             <div class="gt-results" id="gtResults">
               <div class="gt-empty">输入关键词查询搜索量、竞争度、竞价等数据</div>
@@ -1116,17 +1133,24 @@ function clearAdBid(){
 }
 
 /* ===== Google Trends ===== */
+let gtKeywordsData = []; // 存储查询到的关键词数据
+let gtCurrentSort = 'default'; // 当前排序方式
+
 async function searchGoogleTrends(){
   const keyword=document.getElementById('gtKeyword').value.trim();
   const market=document.getElementById('gtMarket').value;
   const resultsDiv=document.getElementById('gtResults');
+  const toolbar=document.getElementById('gtToolbar');
+  const countEl=document.getElementById('gtCount');
 
   if(!keyword){
     resultsDiv.innerHTML='<div class="gt-empty">请输入关键词</div>';
+    toolbar.style.display='none';
     return;
   }
 
   resultsDiv.innerHTML='<div class="gt-loading">正在查询关键词数据...</div>';
+  toolbar.style.display='none';
 
   try {
     const res = await fetch('/api/google-trends', {
@@ -1150,65 +1174,172 @@ async function searchGoogleTrends(){
       return;
     }
 
-    let html = `<div class="gt-chart-container">
-      <div class="gt-chart-title">"${keyword}" 相关关键词 (${keywords.length} 条)</div>
-      <div style="max-height:400px;overflow-y:auto;">`;
+    // 存储数据
+    gtKeywordsData = keywords;
+    gtCurrentSort = 'default';
 
-    keywords.forEach((k, i) => {
-      const text = k.text || k.keyword || '';
-      const volume = k.volume || k.searchVolume || 0;
-      const compLevel = (k.competition_level || k.competitionLevel || '').toUpperCase();
-      const compIndex = k.competition_index || k.competitionIndex || 0;
-      const lowBid = k.low_bid || k.lowBid || 0;
-      const highBid = k.high_bid || k.highBid || 0;
-      const trend = k.trend || 0;
+    // 显示工具栏和统计
+    toolbar.style.display='flex';
+    countEl.textContent=`共 ${keywords.length} 个关键词`;
 
-      // 竞争度颜色
-      let compColor = '#94a3b8';
-      let compBg = '#f1f5f9';
-      if (compLevel === 'LOW') { compColor = '#22c55e'; compBg = '#f0fdf4'; }
-      else if (compLevel === 'MEDIUM') { compColor = '#f59e0b'; compBg = '#fffbeb'; }
-      else if (compLevel === 'HIGH') { compColor = '#ef4444'; compBg = '#fef2f2'; }
-
-      // 趋势箭头
-      let trendIcon = '';
-      if (trend > 0) trendIcon = '<span style="color:#22c55e;">↑</span>';
-      else if (trend < 0) trendIcon = '<span style="color:#ef4444;">↓</span>';
-      else trendIcon = '<span style="color:#94a3b8;">→</span>';
-
-      html += `<div style="padding:12px 0;border-bottom:1px solid #f1f5f9;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="font-size:11px;color:#94a3b8;width:20px;">${i+1}</span>
-          <span style="font-size:13px;font-weight:600;color:#1e293b;flex:1;">${text}</span>
-          ${trendIcon}
-        </div>
-        <div style="display:flex;gap:12px;margin-left:28px;flex-wrap:wrap;">
-          <div style="font-size:11px;">
-            <span style="color:#94a3b8;">搜索量:</span>
-            <span style="color:#1e293b;font-weight:600;">${volume.toLocaleString()}</span>
-          </div>
-          <div style="font-size:11px;">
-            <span style="color:#94a3b8;">竞争度:</span>
-            <span style="color:${compColor};background:${compBg};padding:2px 6px;border-radius:8px;font-weight:600;">${compLevel || '-'}</span>
-          </div>
-          <div style="font-size:11px;">
-            <span style="color:#94a3b8;">竞价:</span>
-            <span style="color:#1e293b;">$${lowBid.toFixed(2)} - $${highBid.toFixed(2)}</span>
-          </div>
-        </div>
-      </div>`;
-    });
-
-    html += '</div></div>';
-    resultsDiv.innerHTML = html;
+    // 渲染结果
+    renderGtKeywords();
   } catch (e) {
     resultsDiv.innerHTML = `<div class="gt-error">请求失败: ${e.message}</div>`;
   }
 }
 
+function renderGtKeywords(){
+  const resultsDiv=document.getElementById('gtResults');
+  const keyword=document.getElementById('gtKeyword').value.trim();
+
+  let html = `<div class="gt-chart-container">
+    <div class="gt-chart-title">"${keyword}" 相关关键词 (${gtKeywordsData.length} 条)`;
+
+  if(gtCurrentSort !== 'default'){
+    html += ` <span style="font-size:11px;color:#64748b;font-weight:400;">[已按${gtCurrentSort === 'volume' ? '搜索量' : '竞价'}排序]</span>`;
+  }
+
+  html += `</div><div style="max-height:400px;overflow-y:auto;">`;
+
+  gtKeywordsData.forEach((k, i) => {
+    const text = k.text || k.keyword || '';
+    const volume = k.volume || k.searchVolume || 0;
+    const compLevel = (k.competition_level || k.competitionLevel || '').toUpperCase();
+    const compIndex = k.competition_index || k.competitionIndex || 0;
+    const lowBid = k.low_bid || k.lowBid || 0;
+    const highBid = k.high_bid || k.highBid || 0;
+    const trend = k.trend || 0;
+
+    // 竞争度颜色
+    let compColor = '#94a3b8';
+    let compBg = '#f1f5f9';
+    if (compLevel === 'LOW') { compColor = '#22c55e'; compBg = '#f0fdf4'; }
+    else if (compLevel === 'MEDIUM') { compColor = '#f59e0b'; compBg = '#fffbeb'; }
+    else if (compLevel === 'HIGH') { compColor = '#ef4444'; compBg = '#fef2f2'; }
+
+    // 趋势箭头
+    let trendIcon = '';
+    if (trend > 0) trendIcon = '<span style="color:#22c55e;">↑</span>';
+    else if (trend < 0) trendIcon = '<span style="color:#ef4444;">↓</span>';
+    else trendIcon = '<span style="color:#94a3b8;">→</span>';
+
+    html += `<div style="padding:12px 0;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:11px;color:#94a3b8;width:20px;">${i+1}</span>
+        <span style="font-size:13px;font-weight:600;color:#1e293b;flex:1;">${text}</span>
+        ${trendIcon}
+      </div>
+      <div style="display:flex;gap:12px;margin-left:28px;flex-wrap:wrap;">
+        <div style="font-size:11px;">
+          <span style="color:#94a3b8;">搜索量:</span>
+          <span style="color:#1e293b;font-weight:600;">${volume.toLocaleString()}</span>
+        </div>
+        <div style="font-size:11px;">
+          <span style="color:#94a3b8;">竞争度:</span>
+          <span style="color:${compColor};background:${compBg};padding:2px 6px;border-radius:8px;font-weight:600;">${compLevel || '-'}</span>
+        </div>
+        <div style="font-size:11px;">
+          <span style="color:#94a3b8;">竞价:</span>
+          <span style="color:#1e293b;">$${lowBid.toFixed(2)} - $${highBid.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += '</div></div>';
+  resultsDiv.innerHTML = html;
+}
+
+function sortGtKeywords(type){
+  if(gtKeywordsData.length === 0) return;
+
+  if(type === 'volume'){
+    // 按搜索量降序
+    gtKeywordsData.sort((a, b) => (b.volume || b.searchVolume || 0) - (a.volume || a.searchVolume || 0));
+    gtCurrentSort = 'volume';
+  } else if(type === 'bid'){
+    // 按最高竞价降序
+    gtKeywordsData.sort((a, b) => (b.high_bid || b.highBid || 0) - (a.high_bid || a.highBid || 0));
+    gtCurrentSort = 'bid';
+  }
+
+  renderGtKeywords();
+}
+
+function copyAllGtKeywords(){
+  if(gtKeywordsData.length === 0) return;
+
+  const text = gtKeywordsData.map(k => k.text || k.keyword || '').join('\n');
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ 已复制';
+    btn.style.background = '#22c55e';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#22c55e';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 1500);
+  }).catch(() => {
+    // 降级方案
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ 已复制';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+function exportGtKeywordsCsv(){
+  if(gtKeywordsData.length === 0) return;
+
+  const keyword = document.getElementById('gtKeyword').value.trim() || '关键词';
+  const market = document.getElementById('gtMarket');
+  const marketName = market.options[market.selectedIndex].text.replace(/[🇺🇸🇬🇧🇩🇪🇫🇷🇯🇵🇨🇦🇦🇺]/g, '').trim() || '全球';
+  const now = new Date().toISOString().slice(0, 10);
+
+  let csvContent = '\ufeff序号,关键词,搜索量,竞争度,竞争指数,最低竞价,最高竞价,趋势\n';
+
+  gtKeywordsData.forEach((k, i) => {
+    const text = k.text || k.keyword || '';
+    const volume = k.volume || k.searchVolume || 0;
+    const compLevel = (k.competition_level || k.competitionLevel || '').toUpperCase() || '-';
+    const compIndex = k.competition_index || k.competitionIndex || 0;
+    const lowBid = (k.low_bid || k.lowBid || 0).toFixed(2);
+    const highBid = (k.high_bid || k.highBid || 0).toFixed(2);
+    const trend = k.trend || 0;
+
+    csvContent += `${i+1},"${text}",${volume},"${compLevel}",${compIndex},${lowBid},${highBid},${trend}\n`;
+  });
+
+  const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `Google关键词洞察_${keyword}_${marketName}_${now}.csv`);
+  a.style.visibility = 'hidden';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function clearGoogleTrends(){
   document.getElementById('gtKeyword').value='';
-  document.getElementById('gtResults').innerHTML='<div class="gt-empty">输入关键词查询 Google Trends 数据</div>';
+  document.getElementById('gtResults').innerHTML='<div class="gt-empty">输入关键词查询搜索量、竞争度、竞价等数据</div>';
+  document.getElementById('gtToolbar').style.display='none';
+  gtKeywordsData = [];
+  gtCurrentSort = 'default';
 }
 
 /* ===== HS编码查询 ===== */
