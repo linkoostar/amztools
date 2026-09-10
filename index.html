@@ -87,11 +87,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .section-head h2{font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px}
 .section-head .hint{font-size:11px;color:var(--muted)}
 
-/* 即时工具 - 卡片网格，自适应宽度，最多4列 */
-.quick-grid{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:560px){.quick-grid{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:900px){.quick-grid{grid-template-columns:repeat(3,1fr)}}
-@media(min-width:1500px){.quick-grid{grid-template-columns:repeat(4,1fr)}}
+/* 即时工具 - 卡片网格，自适应列数，保证卡片最小宽度 */
+.quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
 .qt-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .qt-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .qt-head .icon{font-size:16px}
