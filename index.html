@@ -1292,6 +1292,9 @@ async function searchGoogleTrends(){
     return;
   }
 
+  // 先保存搜索历史（无论成功失败都记录）
+  saveGtHistory(keyword, market || 'US');
+
   // 检查缓存
   const cacheKey = `${keyword}|${market || 'US'}`;
   const cache = getGtCache();
@@ -1378,9 +1381,6 @@ async function searchGoogleTrends(){
     
     // 保存到缓存
     saveGtCache(cacheKey, keywords);
-    
-    // 保存搜索历史
-    saveGtHistory(keyword, market || 'US');
 
     // 显示工具栏和统计
     toolbar.style.display='flex';
