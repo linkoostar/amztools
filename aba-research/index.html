@@ -22,6 +22,22 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .topbar .btn-primary:hover{background:var(--primary-d)}
 .topbar .btn-primary:disabled{background:#94a3b8;border-color:#94a3b8;cursor:wait}
 .cache-tag{font-size:10px;color:var(--muted);padding:2px 6px;background:#f1f5f9;border-radius:3px;margin-left:auto}
+.cookie-status{font-size:10px;color:var(--green);padding:2px 6px}
+.btn-secondary{background:#fff;color:var(--ink);border-color:var(--border);cursor:pointer;font-size:12px}
+.btn-secondary:hover{border-color:var(--primary);color:var(--primary)}
+
+/* Cookie 弹窗 */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.hidden{display:none}
+.modal{background:#fff;border-radius:10px;padding:20px 24px;width:90%;max-width:520px;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.modal h3{font-size:14px;font-weight:700;margin-bottom:8px}
+.modal p{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+.modal textarea{width:100%;height:100px;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:monospace;font-size:11px;resize:vertical;outline:none}
+.modal textarea:focus{border-color:var(--primary)}
+.modal .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.modal .modal-actions button{padding:6px 16px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border)}
+.modal .modal-actions .btn-save{background:var(--primary);color:#fff;border-color:var(--primary)}
+.modal .modal-actions .btn-cancel{background:#fff;color:var(--ink)}
 
 .main{flex:1;overflow:auto;padding:12px 16px}
 
@@ -51,6 +67,7 @@ table.aba tr:hover td{background:#fafbfc}
 .r-flat{color:var(--muted)}
 .cat-stats{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
 .brand-img{width:30px;height:30px;border-radius:3px;object-fit:contain;background:#f1f5f9;display:inline-block;vertical-align:middle;margin-right:3px}
+.asin-img{width:40px;height:40px;border-radius:3px;object-fit:contain;background:#f1f5f9;display:block;margin-bottom:2px}
 
 .load-more{text-align:center;padding:20px;color:var(--muted);font-size:12px}
 .load-more button{padding:6px 18px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;font-size:12px}
@@ -75,7 +92,9 @@ table.aba tr:hover td{background:#fafbfc}
   </select>
   <input type="text" id="qInput" placeholder="搜索关键词（留空 = 全部）">
   <button id="searchBtn" class="btn-primary">查询</button>
+  <button id="cookieBtn" class="btn-secondary" title="设置 SellerSprite cookie">🔑 Cookie</button>
   <span id="cacheTag" class="cache-tag" style="display:none">缓存</span>
+  <span id="cookieStatus" class="cookie-status" style="display:none"></span>
 </div>
 
 <div class="main" id="mainArea">
@@ -87,12 +106,44 @@ table.aba tr:hover td{background:#fafbfc}
 
 <div class="status" id="statusBar">就绪</div>
 
+<!-- Cookie 设置弹窗 -->
+<div class="modal-overlay hidden" id="cookieModal">
+  <div class="modal">
+    <h3>🔑 SellerSprite Cookie</h3>
+    <p>登录 SellerSprite 后，打开浏览器 DevTools（F12）→ Network → 任意请求 → 复制 Cookie 请求头粘贴到此处。<br>Cookie 仅保存在本地浏览器，不会上传服务器（仅转发给 SellerSprite API）。</p>
+    <textarea id="cookieInput" placeholder="ecookie=xxx; _ga=xxx; JSESSIONID=xxx; ..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cookieCancelBtn">取消</button>
+      <button class="btn-save" id="cookieSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const MARKET_NAME={COM:'美国',JP:'日本',DE:'德国',UK:'英国',FR:'法国',IT:'意大利',ES:'西班牙'};
 
-let currentPage=1,currentSize=50,currentOrderField='searchfrequencyrank',currentOrderDesc=false,isLoading=false,endReached=false;
+let currentPage=1,currentSize=50,currentOrderField='searchRank',currentOrderDesc=true,isLoading=false,endReached=false;
 
 const $=id=>document.getElementById(id);
+const SS_COOKIE_KEY='ss_cookie';
+
+function getCookie(){return localStorage.getItem(SS_COOKIE_KEY)||'';}
+function setCookieStatus(){
+  const s=$('cookieStatus');
+  const c=getCookie();
+  if(c){s.textContent='🔑 已设置';s.style.display='';s.style.color='var(--green)';}
+  else{s.textContent='⚠️ 未设置';s.style.display='';s.style.color='var(--orange)';}
+}
+
+function openCookieModal(){$('cookieInput').value=getCookie();$('cookieModal').classList.remove('hidden');}
+function closeCookieModal(){$('cookieModal').classList.add('hidden');}
+function saveCookie(){
+  const v=$('cookieInput').value.trim();
+  if(v)localStorage.setItem(SS_COOKIE_KEY,v);
+  else localStorage.removeItem(SS_COOKIE_KEY);
+  setCookieStatus();
+  closeCookieModal();
+}
 
 function setStatus(msg){$('statusBar').textContent=msg;}
 
@@ -122,84 +173,123 @@ function fmtNum(n){
   return Number.isInteger(n)?String(n):n.toFixed(2);
 }
 
-function renderTrend(canvas,data){
-  if(!data||!Array.isArray(data)||data.length<2){return;}
+function renderTrend(canvas, searchesArr, rankArr){
+  if(!searchesArr||!Array.isArray(searchesArr)||searchesArr.length<2)return;
   const ctx=canvas.getContext('2d');
-  const w=canvas.width=60,h=canvas.height=22;
-  const min=Math.min(...data),max=Math.max(...data);
-  const range=max-min||1;
-  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.beginPath();
-  data.forEach((v,i)=>{
-    const x=i/(data.length-1)*w;
-    const y=h-(v-min)/range*h;
+  const w=canvas.width=80,h=canvas.height=24;
+  const sMin=Math.min(...searchesArr),sMax=Math.max(...searchesArr);
+  const sRange=sMax-sMin||1;
+  // 搜索量折线（蓝色）
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1.2;ctx.beginPath();
+  searchesArr.forEach((v,i)=>{
+    const x=i/(searchesArr.length-1)*w;
+    const y=h-(v-sMin)/sRange*h;
     if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   });
   ctx.stroke();
-  // 趋势线（橙色辅助）
-  if(data.length>=2){
-    ctx.strokeStyle='#f59e0b';ctx.lineWidth=0.6;ctx.setLineDash([2,2]);ctx.beginPath();
-    ctx.moveTo(0,h-(data[0]-min)/range*h);
-    ctx.lineTo(w,h-(data[data.length-1]-min)/range*h);
+  // 排名趋势线（橙色虚线，取反：排名越低越好）
+  if(rankArr&&Array.isArray(rankArr)&&rankArr.length===searchesArr.length){
+    const rMin=Math.min(...rankArr),rMax=Math.max(...rankArr);
+    const rRange=rMax-rMin||1;
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=0.8;ctx.setLineDash([3,2]);ctx.beginPath();
+    rankArr.forEach((v,i)=>{
+      const x=i/(rankArr.length-1)*w;
+      const y=h-(v-rMin)/rRange*h;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
     ctx.stroke();ctx.setLineDash([]);
   }
 }
 
-// 计算变化的颜色类
 function changeClass(v){if(v==null)return 'r-flat';if(v>0)return 'r-up';if(v<0)return 'r-down';return 'r-flat';}
 function changeIcon(v){if(v==null)return '';if(v>0)return '↑';if(v<0)return '↓';return '−';}
 
 function renderRow(item){
-  // 字段映射（容错处理）
-  const kw=item.keyword||item.word||item.name||'';
-  const asin=item.asin||item.ASIN||'';
-  const rank=item.searchfrequencyrank??item.rank;
-  const clickShare=item.clickShare??item.click_share??item.clickShareRate;
-  const clickRank=item.clickRank??item.click_rank;
-  const rankChange=item.searchResultChangeRate??item.search_change??item.searchResultChange;
-  const clickChange=item.clickChangeRate??item.click_change;
-  const ppc=item.clickPpcPrice??item.ppcPrice??item.ppc;
-  const spr=item.SPR??item.spr;
-  const titleDensity=item.titleDensity??item.density;
-  const asinClicks=item.totalClickAsinThree??item.topAsinClicks;
-  const brandClicks=item.totalClickBrandThree??item.topBrandClicks;
-  const asins=item.asins||item.topAsins||[];
-  const brands=item.brands||item.topBrands||[];
-  const trend=item.trend||item.searchTrend;
-  const cat=item.department||item.category||'';
-  const catClick=item.departmentClickShareRate||item.catClickShare;
-  const catTrans=item.departmentConversionRate||item.catConv;
+  // === 真实字段映射 ===
+  const kw=item.keyword||'';
+  const kwCn=item.keywordCn||'';
+  const searches=item.searches||0;
+  const clicks=item.clicks||0;
+  const impressions=item.impressions||0;
+  const purchaseRate=item.purchaseRate;
+  const purchases=item.purchases||0;
+  const products=item.products||0;
+  const departments=item.departments||[];
+  const searchRank=item.searchRank;
+  const searchRankGrowthRate=item.searchRankGrowthRate;
+  const searchRankGrowthValue=item.searchRankGrowthValue;
+  const clickShareRate=item.clickShareRate;
+  const cvsShareRate=item.cvsShareRate;
+  const titleDensity=item.titleDensityExact;
+  const cprExact=item.cprExact;
+  const phrasePpc=item.phrasePpc;
+  const broadPpc=item.broadPpc;
+  const exactPpc=item.exactPpc;
+  const top3Brands=item.top3Brands||[];
+  const top3Asins=item.top3AsinDtoList||[];
+  const trends=item.trends||[];
+  const gkDatas=item.gkDatas||[];
 
-  // 排名变化显示
-  const upDown=item.searchfrequencyrankUptrend??item.upDown;
+  // 周排名变化
+  const w1Rank=item.w1SearchRank;
+  const w4Rank=item.w4SearchRank;
+  const w12Rank=item.w12SearchRank;
+  const w1GrowthRate=item.w1RankGrowthRate;
+  const w4GrowthRate=item.w4RankGrowthRate;
+  const w12GrowthRate=item.w12RankGrowthRate;
+
+  // 趋势数据
+  const trendSearches=trends.map(t=>t.searches);
+  const trendRanks=trends.map(t=>t.rank);
+
+  // ASIN 图片（取前3个）
+  const topAsinImgs=gkDatas.slice(0,3);
+  // 也支持 top3AsinDtoList 里的图片
+  const asinDtoImgs=top3Asins.slice(0,3);
 
   return `<tr>
     <td>
       <div class="kw">
         ${escapeHtml(kw)}
-        ${trend&&Array.isArray(trend)?'<canvas class="trend"></canvas>':''}
-        ${asin?'<a class="asin-link" href="https://www.amazon.com/dp/'+escapeHtml(asin)+'" target="_blank" rel="noopener">ASIN</a>':''}
+        ${kwCn?`<span class="sub">${escapeHtml(kwCn)}</span>`:''}
+        ${trends.length>=2?'<canvas class="trend" width="80" height="24"></canvas>':''}
+      </div>
+      ${departments.length?`<div class="cat-stats">所属类目：${departments.map(d=>escapeHtml(d)).join(' > ')}</div>`:''}
+    </td>
+    <td>
+      ${searchRank!=null?fmtNum(searchRank):'-'}
+      ${searchRankGrowthRate!=null?`<div class="${changeClass(searchRankGrowthRate)}" style="font-size:10px">${changeIcon(searchRankGrowthRate)}${(searchRankGrowthRate*100).toFixed(1)}%</div>`:''}
+    </td>
+    <td>${fmtNum(searches)}</td>
+    <td>
+      <div style="font-size:10px;line-height:1.6">
+        ${w1Rank!=null?`<div>1周前 <b>${fmtNum(w1Rank)}</b> <span class="${changeClass(w1GrowthRate)}">${changeIcon(w1GrowthRate)}${w1GrowthRate!=null?(w1GrowthRate*100).toFixed(1)+'%':''}</span></div>`:''}
+        ${w4Rank!=null?`<div>4周前 <b>${fmtNum(w4Rank)}</b> <span class="${changeClass(w4GrowthRate)}">${changeIcon(w4GrowthRate)}${w4GrowthRate!=null?(w4GrowthRate*100).toFixed(1)+'%':''}</span></div>`:''}
+        ${w12Rank!=null?`<div>12周前 <b>${fmtNum(w12Rank)}</b> <span class="${changeClass(w12GrowthRate)}">${changeIcon(w12GrowthRate)}${w12Rank!=null?(w12GrowthRate*100).toFixed(1)+'%':''}</span></div>`:''}
       </div>
     </td>
-    <td>${rank!=null?fmtNum(rank):'-'}</td>
-    <td>${clickShare!=null?(typeof clickShare==='number'?(clickShare*100).toFixed(2)+'%':escapeHtml(clickShare)):'-'}</td>
-    <td>${clickRank!=null?fmtNum(clickRank):'-'}</td>
-    <td class="${changeClass(rankChange)}">${rankChange!=null?(typeof rankChange==='number'?(rankChange*100).toFixed(2)+'%':escapeHtml(rankChange)):'-'}</td>
-    <td class="${changeClass(clickChange)}">${clickChange!=null?(typeof clickChange==='number'?(clickChange*100).toFixed(2)+'%':escapeHtml(clickChange)):'-'}</td>
-    <td>${ppc!=null?'$'+fmtNum(ppc):'-'}</td>
-    <td>${spr!=null?fmtNum(spr):'-'}</td>
+    <td>${clickShareRate!=null?(clickShareRate*100).toFixed(2)+'%':'-'}</td>
+    <td>${cvsShareRate!=null?(cvsShareRate*100).toFixed(2)+'%':'-'}</td>
+    <td>
+      <div style="font-size:10px;line-height:1.6">
+        ${phrasePpc!=null?`<div>Phrase <b>$${phrasePpc.toFixed(2)}</b></div>`:''}
+        ${broadPpc!=null?`<div>Broad <b>$${broadPpc.toFixed(2)}</b></div>`:''}
+        ${exactPpc!=null?`<div>Exact <b>$${exactPpc.toFixed(2)}</b></div>`:''}
+      </div>
+    </td>
     <td>
       ${titleDensity!=null?fmtNum(titleDensity):'-'}
-      ${(catClick!=null||catTrans!=null)?`<div class="cat-stats">点击占比 ${catClick!=null?(typeof catClick==='number'?(catClick*100).toFixed(2)+'%':catClick):'-'} · 转化 ${catTrans!=null?(typeof catTrans==='number'?(catTrans*100).toFixed(2)+'%':catTrans):'-'}</div>`:''}
+      ${cprExact!=null?`<div class="cat-stats">CPR ${cprExact}</div>`:''}
     </td>
-    <td>${asinClicks!=null?fmtNum(asinClicks):'-'}</td>
     <td>
-      <div>
-        ${(brands||[]).slice(0,3).map(b=>{
-          const name=typeof b==='string'?b:(b.name||b.brand||'');
-          const logo=b&&typeof b==='object'?(b.logo||b.image||b.icon):null;
-          const rate=b&&typeof b==='object'?(b.clickRate??b.rate):null;
-          return (logo?`<img class="brand-img" src="${escapeHtml(logo)}" onerror="this.style.display='none'" alt="">`:'')+`<span>${escapeHtml(name)}</span>${rate!=null?`<div style="font-size:10px;color:${changeClass(rate)}">${(typeof rate==='number'?(rate*100).toFixed(2):rate)+'%'}</div>`:''}`;
-        }).join('<br>')}
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${topAsinImgs.map(a=>`<a href="https://www.amazon.com/dp/${escapeHtml(a.asin)}" target="_blank" rel="noopener" title="${escapeHtml(a.asinTitle||'')}"><img class="asin-img" src="${escapeHtml(a.asinImage)}" onerror="this.style.display='none'" alt="${escapeHtml(a.asin)}"><span style="font-size:9px;color:var(--muted)">${escapeHtml(a.asin)}</span></a>`).join('')}
+        ${asinDtoImgs.filter(a=>a.imageUrl&&!topAsinImgs.find(t=>t.asin===a.asin)).map(a=>`<a href="https://www.amazon.com/dp/${escapeHtml(a.asin)}" target="_blank" rel="noopener"><img class="asin-img" src="${escapeHtml(a.imageUrl)}" onerror="this.style.display='none'" alt="${escapeHtml(a.asin)}"><span style="font-size:9px;color:var(--muted)">${escapeHtml(a.asin)}</span>${a.clickRate!=null?`<div style="font-size:9px">点击 ${(a.clickRate*100).toFixed(1)}%</div>`:''}${a.conversionRate!=null?`<div style="font-size:9px">转化 ${(a.conversionRate*100).toFixed(1)}%</div>`:''}</a>`).join('')}
+      </div>
+    </td>
+    <td>
+      <div style="font-size:11px;line-height:1.8">
+        ${top3Brands.map(b=>`<div>🏷️ ${escapeHtml(b)}</div>`).join('')}
       </div>
     </td>
   </tr>`;
@@ -208,42 +298,48 @@ function renderRow(item){
 function renderTable(items,append){
   let html=`<table class="aba">
     <thead><tr>
-      <th data-field="keyword">关键词</th>
-      <th data-field="searchfrequencyrank" class="active">搜索排名 <span class="sort">${currentOrderField==='searchfrequencyrank'?(currentOrderDesc?'▼':'▲'):'⇅'}</span></th>
+      <th>关键词</th>
+      <th data-field="searchRank" class="active">搜索排名 <span class="sort">${currentOrderField==='searchRank'?(currentOrderDesc?'▼':'▲'):'⇅'}</span></th>
+      <th>搜索量</th>
+      <th>历史排名（1/4/12周）</th>
       <th>点击份额</th>
-      <th>点击排名</th>
-      <th>搜索结果变化率</th>
-      <th>点击变化率</th>
-      <th>点击 PPC</th>
-      <th>SPR</th>
+      <th>转化份额</th>
+      <th>PPC（Phrase/Broad/Exact）</th>
       <th>标题密度</th>
-      <th>总点击前三 ASIN</th>
-      <th>点击前三品牌</th>
+      <th>Top3 ASIN</th>
+      <th>Top3 品牌</th>
     </tr></thead>
     <tbody>
     ${items.map(renderRow).join('')}
     </tbody>
   </table>`;
   if(append){
-    // 追加：找到现有 tbody 追加行
     const existing=document.querySelector('table.aba tbody');
     if(existing){
       existing.insertAdjacentHTML('beforeend',items.map(renderRow).join(''));
-      // 渲染新增行里的 trend canvas
-      existing.querySelectorAll('canvas.trend').forEach((c,i)=>{
-        const item=items[i];
-        const trend=item.trend||item.searchTrend;
-        if(trend&&Array.isArray(trend))renderTrend(c,trend);
+      // 渲染新增行的趋势图
+      const newRows=existing.querySelectorAll('tr');
+      const offset=newRows.length-items.length;
+      items.forEach((item,i)=>{
+        const row=newRows[offset+i];
+        if(!row)return;
+        const c=row.querySelector('canvas.trend');
+        if(c){
+          const trends=item.trends||[];
+          renderTrend(c,trends.map(t=>t.searches),trends.map(t=>t.rank));
+        }
       });
       return;
     }
   }
   html=`<div style="overflow:auto;max-height:calc(100vh - 130px);border-radius:8px;">${html}</div>`;
   $('mainArea').innerHTML=html;
+  // 渲染所有趋势图
   $('mainArea').querySelectorAll('canvas.trend').forEach((c,i)=>{
     const item=items[i];
-    const trend=item.trend||item.searchTrend;
-    if(trend&&Array.isArray(trend))renderTrend(c,trend);
+    if(!item)return;
+    const trends=item.trends||[];
+    renderTrend(c,trends.map(t=>t.searches),trends.map(t=>t.rank));
   });
   $('mainArea').querySelectorAll('th[data-field]').forEach(th=>{
     th.onclick=()=>{
@@ -273,6 +369,12 @@ async function doSearch(reset,append){
   setStatus(`查询 ${MARKET_NAME[market]} 站，关键词：${q||'全部'}，第 ${currentPage} 页...`);
 
   try{
+    const cookie=getCookie();
+    if(!cookie){
+      if(reset)showError('请先点击「🔑 Cookie」按钮设置 SellerSprite cookie');
+      else setStatus('请先设置 cookie');
+      return;
+    }
     const res=await fetch('/api/aba-research',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -280,7 +382,8 @@ async function doSearch(reset,append){
         market,q,
         page:currentPage,
         size:currentSize,
-        order:{field:currentOrderField,desc:currentOrderDesc}
+        order:{field:currentOrderField,desc:currentOrderDesc},
+        cookie
       })
     });
     const data=await res.json();
@@ -315,6 +418,15 @@ async function doSearch(reset,append){
 $('searchBtn').onclick=()=>doSearch(true);
 $('qInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch(true);});
 $('marketSel').onchange=()=>{if($('qInput').value.trim())doSearch(true);};
+
+// Cookie 弹窗
+$('cookieBtn').onclick=openCookieModal;
+$('cookieSaveBtn').onclick=saveCookie;
+$('cookieCancelBtn').onclick=closeCookieModal;
+$('cookieModal').addEventListener('click',e=>{if(e.target===$('cookieModal'))closeCookieModal();});
+
+// 初始化 cookie 状态
+setCookieStatus();
 
 // 初次进入：显示空状态，等待用户输入或选择站点
 // doSearch(true);
