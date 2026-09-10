@@ -487,9 +487,11 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <div class="bw-input"><label>长</label><input type="number" id="bwL" value="60" min="0" step="0.1"></div>
                 <div class="bw-input"><label>宽</label><input type="number" id="bwW" value="36" min="0" step="0.1"></div>
                 <div class="bw-input"><label>高</label><input type="number" id="bwH" value="39" min="0" step="0.1"></div>
-                <div class="bw-input"><select id="bwDimUnit"><option value="cm" selected>CM</option><option value="in">IN</option><option value="mm">MM</option><option value="m">M</option></select></div>
+                <div class="bw-input"><select id="bwDimUnit"><option value="cm" selected>CM</option><option value="in">IN</option><option value="mm">MM</option><option value="m">M</option><option value="ft">FT</option></select></div>
               </div>
               <div class="bw-converted">
+                <span>→ <b id="bwCmL">60.0</b>×<b id="bwCmW">36.0</b>×<b id="bwCmH">39.0</b> cm</span>
+                <span>→ <b id="bwML">0.60</b>×<b id="bwMW">0.36</b>×<b id="bwMH">0.39</b> m</span>
                 <span>→ <b id="bwInL">23.6</b>×<b id="bwInW">14.2</b>×<b id="bwInH">15.4</b> in</span>
                 <span>→ <b id="bwFtL">1.97</b>×<b id="bwFtW">1.18</b>×<b id="bwFtH">1.28</b> ft</span>
               </div>
@@ -935,7 +937,7 @@ function initSearch(){const s=document.getElementById('toolSearch');s.addEventLi
 function initBillingWeight(){
   const L=document.getElementById('bwL'),W=document.getElementById('bwW'),H=document.getElementById('bwH');
   const wt=document.getElementById('bwWeight'),du=document.getElementById('bwDimUnit'),wu=document.getElementById('bwWtUnit');
-  function toCm(val,unit){if(unit==='cm')return val;if(unit==='in')return val*2.54;if(unit==='mm')return val/10;if(unit==='m')return val*100;return val;}
+  function toCm(val,unit){if(unit==='cm')return val;if(unit==='in')return val*2.54;if(unit==='mm')return val/10;if(unit==='m')return val*100;if(unit==='ft')return val*30.48;return val;}
   function toKg(val,unit){if(unit==='kg')return val;if(unit==='lb')return val*0.453592;if(unit==='oz')return val*0.0283495;if(unit==='g')return val/1000;return val;}
   function update(){
     const lCm=toCm(parseFloat(L.value)||0,du.value);
@@ -943,6 +945,12 @@ function initBillingWeight(){
     const hCm=toCm(parseFloat(H.value)||0,du.value);
     const kg=toKg(parseFloat(wt.value)||0,wu.value);
     // 尺寸换算
+    document.getElementById('bwCmL').textContent=lCm.toFixed(1);
+    document.getElementById('bwCmW').textContent=wCm.toFixed(1);
+    document.getElementById('bwCmH').textContent=hCm.toFixed(1);
+    document.getElementById('bwML').textContent=(lCm/100).toFixed(2);
+    document.getElementById('bwMW').textContent=(wCm/100).toFixed(2);
+    document.getElementById('bwMH').textContent=(hCm/100).toFixed(2);
     document.getElementById('bwInL').textContent=(lCm/2.54).toFixed(1);
     document.getElementById('bwInW').textContent=(wCm/2.54).toFixed(1);
     document.getElementById('bwInH').textContent=(hCm/2.54).toFixed(1);
