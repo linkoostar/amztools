@@ -1135,6 +1135,46 @@ function clearAdBid(){
 /* ===== Google Trends ===== */
 let gtKeywordsData = []; // 存储查询到的关键词数据
 let gtCurrentSort = 'default'; // 当前排序方式
+const GT_CACHE_KEY = 'gt_keywords_cache'; // localStorage key
+const GT_CACHE_MAX = 50; // 最多缓存 50 个查询
+
+// 获取缓存
+function getGtCache(){
+  try {
+    return JSON.parse(localStorage.getItem(GT_CACHE_KEY) || '{}');
+  } catch(e) {
+    return {};
+  }
+}
+
+// 保存缓存
+function saveGtCache(cacheKey, data){
+  const cache = getGtCache();
+  cache[cacheKey] = {
+    data: data,
+    timestamp: Date.now()
+  };
+  
+  // 如果缓存太多，删除最旧的
+  const keys = Object.keys(cache);
+  if(keys.length > GT_CACHE_MAX){
+    // 按时间戳排序，删除最旧的
+    const sorted = keys.map(k => ({key: k, time: cache[k].timestamp}))
+      .sort((a, b) => a.time - b.time);
+    const toRemove = sorted.slice(0, keys.length - GT_CACHE_MAX);
+    toRemove.forEach(item => delete cache[item.key]);
+  }
+  
+  localStorage.setItem(GT_CACHE_KEY, JSON.stringify(cache));
+}
+
+// 清除缓存
+function clearGtCache(){
+  if(confirm('确定要清除所有关键词缓存吗？')){
+    localStorage.removeItem(GT_CACHE_KEY);
+    alert('缓存已清除');
+  }
+}
 
 async function searchGoogleTrends(){
   const keyword=document.getElementById('gtKeyword').value.trim();
@@ -1146,6 +1186,23 @@ async function searchGoogleTrends(){
   if(!keyword){
     resultsDiv.innerHTML='<div class="gt-empty">请输入关键词</div>';
     toolbar.style.display='none';
+    return;
+  }
+
+  // 检查缓存
+  const cacheKey = `${keyword}|${market || 'US'}`;
+  const cache = getGtCache();
+  
+  if(cache[cacheKey]){
+    // 使用缓存数据
+    const keywords = cache[cacheKey].data;
+    gtKeywordsData = keywords;
+    gtCurrentSort = 'default';
+    
+    toolbar.style.display='flex';
+    countEl.textContent=`共 ${keywords.length} 个关键词 (缓存)`;
+    
+    renderGtKeywords();
     return;
   }
 
@@ -1177,6 +1234,9 @@ async function searchGoogleTrends(){
     // 存储数据
     gtKeywordsData = keywords;
     gtCurrentSort = 'default';
+    
+    // 保存到缓存
+    saveGtCache(cacheKey, keywords);
 
     // 显示工具栏和统计
     toolbar.style.display='flex';
