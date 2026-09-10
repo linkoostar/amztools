@@ -311,6 +311,14 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .gt-export-btn{background:var(--green);color:#fff;border-color:var(--green)}
 .gt-export-btn:hover{background:#16a34a;border-color:#16a34a}
 
+.gt-history{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:11px}
+.gt-history:empty{display:none}
+.gt-history-label{color:#94a3b8;font-weight:500;padding:2px 0}
+.gt-history-item{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;cursor:pointer;transition:.12s;color:#475569}
+.gt-history-item:hover{background:#e2e8f0;border-color:#cbd5e1}
+.gt-history-item .del{color:#94a3b8;font-size:13px;line-height:1;padding:0 2px;cursor:pointer}
+.gt-history-item .del:hover{color:#ef4444}
+
 .gt-results{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
 .gt-empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:12px}
 .gt-loading{padding:20px 10px;text-align:center;color:var(--primary);font-size:12px}
@@ -602,6 +610,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
               </select>
               <button onclick="searchGoogleTrends()">查询</button>
             </div>
+            <div class="gt-history" id="gtHistory"></div>
             <div class="gt-toolbar" id="gtToolbar" style="display:none;">
               <span class="gt-count" id="gtCount"></span>
               <div class="gt-actions">
@@ -1137,6 +1146,8 @@ let gtKeywordsData = []; // 存储查询到的关键词数据
 let gtCurrentSort = 'default'; // 当前排序方式
 const GT_CACHE_KEY = 'gt_keywords_cache'; // localStorage key
 const GT_CACHE_MAX = 50; // 最多缓存 50 个查询
+const GT_HISTORY_KEY = 'gt_search_history'; // 搜索历史 key
+const GT_HISTORY_MAX = 10; // 最多保存 10 条历史
 
 // 获取缓存
 function getGtCache(){
@@ -1174,6 +1185,71 @@ function clearGtCache(){
     localStorage.removeItem(GT_CACHE_KEY);
     alert('缓存已清除');
   }
+}
+
+// 获取搜索历史
+function getGtHistory(){
+  try {
+    return JSON.parse(localStorage.getItem(GT_HISTORY_KEY) || '[]');
+  } catch(e) {
+    return [];
+  }
+}
+
+// 保存搜索历史
+function saveGtHistory(keyword, market){
+  const history = getGtHistory();
+  const item = { keyword, market, timestamp: Date.now() };
+  
+  // 移除重复项
+  const filtered = history.filter(h => !(h.keyword === keyword && h.market === market));
+  
+  // 添加到开头
+  filtered.unshift(item);
+  
+  // 限制数量
+  const trimmed = filtered.slice(0, GT_HISTORY_MAX);
+  
+  localStorage.setItem(GT_HISTORY_KEY, JSON.stringify(trimmed));
+  renderGtHistory();
+}
+
+// 删除历史记录
+function removeGtHistory(index, event){
+  event.stopPropagation();
+  const history = getGtHistory();
+  history.splice(index, 1);
+  localStorage.setItem(GT_HISTORY_KEY, JSON.stringify(history));
+  renderGtHistory();
+}
+
+// 渲染搜索历史
+function renderGtHistory(){
+  const history = getGtHistory();
+  const container = document.getElementById('gtHistory');
+  
+  if(history.length === 0){
+    container.innerHTML = '';
+    return;
+  }
+  
+  let html = '<span class="gt-history-label">历史:</span>';
+  history.forEach((item, index) => {
+    const marketLabel = item.market || 'US';
+    html += `<span class="gt-history-item" onclick="searchGtFromHistory('${item.keyword}', '${item.market}')">
+      ${item.keyword} <small>(${marketLabel})</small>
+      <span class="del" onclick="removeGtHistory(${index}, event)">×</span>
+    </span>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+// 从历史记录搜索
+function searchGtFromHistory(keyword, market){
+  document.getElementById('gtKeyword').value = keyword;
+  document.getElementById('gtMarket').value = market;
+  searchGoogleTrends();
 }
 
 async function searchGoogleTrends(){
@@ -1237,6 +1313,9 @@ async function searchGoogleTrends(){
     
     // 保存到缓存
     saveGtCache(cacheKey, keywords);
+    
+    // 保存搜索历史
+    saveGtHistory(keyword, market || 'US');
 
     // 显示工具栏和统计
     toolbar.style.display='flex';
@@ -1400,6 +1479,7 @@ function clearGoogleTrends(){
   document.getElementById('gtToolbar').style.display='none';
   gtKeywordsData = [];
   gtCurrentSort = 'default';
+  renderGtHistory();
 }
 
 /* ===== HS编码查询 ===== */
@@ -2160,7 +2240,7 @@ function saveCardOrder(){
   localStorage.setItem(QT_SORT_KEY,JSON.stringify(order));
 }
 
-function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();initDragSort();initHsCategories();initTranslator();document.getElementById('backBtn').onclick=goHome;}
+function init(){renderSidebar();renderSidebarStats();renderToolGrid();initSidebarToggle();initTitleCounter();initRatingCalculator();initBillingWeight();initAdBid();initSearch();renderAmzSugHistory();renderGtHistory();initDragSort();initHsCategories();initTranslator();document.getElementById('backBtn').onclick=goHome;}
 init();
 </script>
 </body>
