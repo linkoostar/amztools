@@ -1,84 +1,91 @@
 // ============================================
 // POST /api/google-trends  —  Google Trends 数据代理
-// Body: { keyword, geo, date }
-// 使用 serpapi 或其他免费接口
+// 使用 RapidAPI Cognify Google Trends API
+// Body: { keyword, geo, date, type }
+// type: 'explore' | 'trending' | 'compare'
 // ============================================
 
 import { jsonResponse, errorResponse } from './_utils/db.js';
 
-export async function onRequestPost(context) {
-  const env = (context && context.env) || {};
+const RAPID_HOST = 'google-trends21.p.rapidapi.com';
+const RAPID_KEY = '63990e1ac4msh48fe26069047bc0p122f8djsn4293329c4054';
 
+async function callRapidAPI(path, params) {
+  const qs = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  const url = `https://${RAPID_HOST}${path}${qs ? '?' + qs : ''}`;
+
+  const res = await fetch(url, {
+    headers: {
+      'x-rapidapi-host': RAPID_HOST,
+      'x-rapidapi-key': RAPID_KEY
+    }
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`RapidAPI ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+export async function onRequestPost(context) {
   let body;
   try { body = await context.request.json(); } catch { return errorResponse('无效的 JSON'); }
 
-  const { keyword, geo = '', date = 'today 12-m' } = body;
-  if (!keyword) return errorResponse('缺少关键词', 400);
-
-  // 使用 Google Trends 的公开 explore endpoint
-  // 这个 endpoint 返回 JSONP，需要解析
-  const url = `https://trends.google.com/trends/api/dailytrends?hl=en-US&geo=${geo}&ed=${date}&ns=15`;
+  const { keyword, geo = '', date = 'today 12-m', type = 'explore' } = body;
 
   try {
-    // 尝试获取趋势数据
-    const res = await fetch(
-      `https://trends.google.com/trends/api/explore?hl=en-US&tz=-480&req={"comparisonItem":[{"keyword":"${encodeURIComponent(keyword)}","geo":"${geo}","time":"${date}"}],"category":0,"property":""}`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json'
-        }
-      }
-    );
-
-    if (!res.ok) {
-      // 如果直接 API 失败，返回基本信息
-      return jsonResponse({
-        keyword,
-        geo,
-        date,
-        url: `https://trends.google.com/trends/explore?geo=${geo}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(date)}`,
-        source: 'direct'
+    if (type === 'trending') {
+      // 获取当前热门趋势
+      const data = await callRapidAPI('/getTrendingNow', {
+        country: geo || 'US',
+        time: '4',
+        enableRelated: 'false',
+        enableTimeSeries: 'false',
+        tz: '480',
+        articleCount: '0'
       });
+      return jsonResponse(data);
     }
 
-    const text = await res.text();
-    // 解析 Google Trends 返回的 JSONP
-    let data;
-    try {
-      // 移除 )]}', 前缀
-      const jsonStr = text.replace(/^\)\]\}'/, '');
-      data = JSON.parse(jsonStr);
-    } catch {
-      data = { raw: text };
+    if (type === 'compare' && keyword && keyword.includes(',')) {
+      // 对比多个关键词
+      const keywords = keyword.split(',').map(k => k.trim()).filter(Boolean);
+      const data = await callRapidAPI('/getExploreCompareSearchTerm', {
+        keywords: keywords.join(','),
+        country: geo,
+        time: date,
+        category: '0',
+        tz: '480',
+        hl: 'zh-CN'
+      });
+      return jsonResponse(data);
     }
 
-    return jsonResponse({
+    // 默认：查询单个关键词趋势
+    if (!keyword) return errorResponse('缺少关键词', 400);
+    const data = await callRapidAPI('/getExploreSearchTerm', {
       keyword,
-      geo,
-      date,
-      data,
-      url: `https://trends.google.com/trends/explore?geo=${geo}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(date)}`,
-      source: 'api'
+      country: geo,
+      time: date,
+      subRegion: 'region',
+      category: '0',
+      tz: '480',
+      hl: 'zh-CN'
     });
+    return jsonResponse(data);
   } catch (e) {
-    // 失败时返回基本信息和链接
-    return jsonResponse({
-      keyword,
-      geo,
-      date,
-      url: `https://trends.google.com/trends/explore?geo=${geo}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(date)}`,
-      source: 'fallback',
-      error: e.message
-    });
+    return errorResponse('查询失败: ' + e.message, 502);
   }
 }
 
 export async function onRequestGet() {
   return jsonResponse({
     name: 'Google Trends API',
-    desc: 'POST { keyword, geo, date }，获取 Google Trends 数据',
-    env_optional: 'none'
+    desc: 'POST { keyword, geo, date, type }，获取 Google Trends 数据'
   });
 }
 
