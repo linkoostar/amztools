@@ -114,24 +114,18 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 
 /* 标题计算器 */
 .title-section{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px}
-.title-section .ts-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.title-section .ts-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .title-section .ts-label{font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:5px}
 .title-section .ts-label .limit-badge{font-size:9px;font-weight:600;padding:1px 7px;border-radius:10px;background:var(--primary-l);color:var(--primary-d)}
 .title-section .ts-limit-sel{font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:5px;outline:none;color:var(--muted)}
 .title-section textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:inherit;font-size:12px;resize:vertical;min-height:42px;outline:none;transition:.12s}
 .title-section textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
-.ts-stats{display:flex;gap:12px;margin-top:6px;flex-wrap:wrap}
 .ts-stat{font-size:10px;color:var(--muted)}
 .ts-stat b{color:var(--ink);font-size:13px;margin-left:2px}
-.ts-meta{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
-.ts-meta .ts-stat{margin-top:0}
-.ts-bar{flex:0 0 60px;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden}
+.ts-meta{display:flex;align-items:center;gap:10px;margin-left:auto;padding:3px 8px;background:#f1f5f9;border-radius:10px;flex-wrap:wrap}
+.ts-bar{flex:0 0 50px;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden}
 .ts-bar-fill{height:100%;border-radius:3px;transition:width .3s,background .3s;width:0}
-.ts-status{font-size:10px;font-weight:600;margin-left:auto}
-.dual-total{display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--primary-l);border-radius:8px;flex-wrap:wrap}
-.dual-total .dt-label{font-size:11px;font-weight:700;color:var(--primary-d)}
-.dual-total .dt-stat{font-size:11px;color:var(--muted)}
-.dual-total .dt-stat b{color:var(--ink);font-size:13px;margin-left:2px}
+.ts-status{font-size:10px;font-weight:600}
 .tc-translate-bar{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;flex-wrap:wrap}
 .tc-chk{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;user-select:none}
 .tc-chk input{cursor:pointer}
@@ -432,13 +426,13 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <div class="ts-label">主标题 <span class="limit-badge" id="mainBadge">75</span></div>
                 <select class="ts-limit-sel" id="mainLimitSel"><option value="75" selected>75</option><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="custom">自定义</option></select>
                 <input type="number" class="ts-limit-sel hidden" id="mainCustom" value="75" min="1" max="500" style="width:50px">
+                <div class="ts-meta">
+                  <span class="ts-stat">字符<b id="mainChars">0</b></span><span class="ts-stat">字节<b id="mainBytes">0</b></span><span class="ts-stat">词<b id="mainWords">0</b></span>
+                  <div class="ts-bar"><div class="ts-bar-fill" id="mainBar"></div></div>
+                  <span class="ts-status" id="mainStatus"></span>
+                </div>
               </div>
               <textarea id="mainTitleInput" placeholder="品牌+核心词+产品类型..."></textarea>
-              <div class="ts-meta">
-                <span class="ts-stat">字符<b id="mainChars">0</b></span><span class="ts-stat">字节<b id="mainBytes">0</b></span><span class="ts-stat">词<b id="mainWords">0</b></span>
-                <div class="ts-bar"><div class="ts-bar-fill" id="mainBar"></div></div>
-                <span class="ts-status" id="mainStatus"></span>
-              </div>
               <div class="tc-trans-wrap hidden" id="mainTransWrap">
                 <div class="tc-trans-head"><span class="tc-trans-label">主标题译文</span><button class="tc-trans-copy" id="mainTransCopy" onclick="copyTitleTranslation('main')">📋</button></div>
                 <div class="tc-trans-out" id="mainTransOut"></div>
@@ -449,13 +443,13 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <div class="ts-label">副标题 <span class="limit-badge" id="subBadge">125</span></div>
                 <select class="ts-limit-sel" id="subLimitSel"><option value="125" selected>125</option><option value="80">80</option><option value="150">150</option><option value="200">200</option><option value="custom">自定义</option></select>
                 <input type="number" class="ts-limit-sel hidden" id="subCustom" value="125" min="1" max="500" style="width:50px">
+                <div class="ts-meta">
+                  <span class="ts-stat">字符<b id="subChars">0</b></span><span class="ts-stat">字节<b id="subBytes">0</b></span><span class="ts-stat">词<b id="subWords">0</b></span>
+                  <div class="ts-bar"><div class="ts-bar-fill" id="subBar"></div></div>
+                  <span class="ts-status" id="subStatus"></span>
+                </div>
               </div>
               <textarea id="subTitleInput" placeholder="特性、用途、规格补充..."></textarea>
-              <div class="ts-meta">
-                <span class="ts-stat">字符<b id="subChars">0</b></span><span class="ts-stat">字节<b id="subBytes">0</b></span><span class="ts-stat">词<b id="subWords">0</b></span>
-                <div class="ts-bar"><div class="ts-bar-fill" id="subBar"></div></div>
-                <span class="ts-status" id="subStatus"></span>
-              </div>
               <div class="tc-trans-wrap hidden" id="subTransWrap">
                 <div class="tc-trans-head"><span class="tc-trans-label">副标题译文</span><button class="tc-trans-copy" id="subTransCopy" onclick="copyTitleTranslation('sub')">📋</button></div>
                 <div class="tc-trans-out" id="subTransOut"></div>
