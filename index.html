@@ -778,6 +778,8 @@ function initTitleCounter(){
   // 防抖 token：每次请求递增，老请求结果会被丢弃
   let mainToken=0,subToken=0;
   let mainTimer=null,subTimer=null;
+  // 串行队列：确保主副标题翻译不并发（避免上游 502）
+  let transChain=Promise.resolve();
   function setTransState(prefix,state,msg){
     const out=document.getElementById(prefix+'TransOut');
     out.className='tc-trans-out'+(state?(' '+state):'');
@@ -800,21 +802,26 @@ function initTitleCounter(){
     wrap.classList.remove('hidden');
     setTransState(prefix,'loading','');
     const target=tcTarget.value;
-    translateText(text,target).then(r=>{
+    // 串行：链到 transChain 后执行，避免主副并发触发 502
+    transChain=transChain.then(()=>{
+      // 排到自己时若已被新请求取代，则跳过本次
       if(token!==(prefix==='main'?mainToken:subToken))return;
-      if(!r.content){setTransState(prefix,'empty','（译文为空）');return;}
-      setTransState(prefix,'',r.content);
-    }).catch(e=>{
-      if(token!==(prefix==='main'?mainToken:subToken))return;
-      if(e.needSetup){setTransState(prefix,'error',e.message);openTranslatorSettings();return;}
-      setTransState(prefix,'error',e.message||'翻译失败');
+      return translateText(text,target).then(r=>{
+        if(token!==(prefix==='main'?mainToken:subToken))return;
+        if(!r.content){setTransState(prefix,'empty','（译文为空）');return;}
+        setTransState(prefix,'',r.content);
+      }).catch(e=>{
+        if(token!==(prefix==='main'?mainToken:subToken))return;
+        if(e.needSetup){setTransState(prefix,'error',e.message);openTranslatorSettings();return;}
+        setTransState(prefix,'error',e.message||'翻译失败');
+      });
     });
   }
   function scheduleTranslate(prefix,input){
     if(!tcChk.checked)return;
     const t=prefix==='main'?mainTimer:subTimer;
     clearTimeout(t);
-    const timer=setTimeout(()=>translateOne(prefix,input),500);
+    const timer=setTimeout(()=>translateOne(prefix,input),800);
     if(prefix==='main')mainTimer=timer;else subTimer=timer;
   }
   function syncAutoTarget(){
@@ -1494,45 +1501,64 @@ function initTranslator(){
 async function translateText(text,target){
   const t=text.trim();
   if(!t)throw new Error('空文本');
-  if(hasLocalTranslatorSettings()){
-    // 本地有完整配置：直调外部 API
-    const settings=getTranslatorSettings();
-    let baseUrl=settings.baseUrl.replace(/\/+$/,'');
-    if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
-    const url=baseUrl+'/chat/completions';
-    const prompt='把以下文本翻译成'+target+'：\n\n'+t;
-    const res=await fetch(url,{
+  const hasLocal=hasLocalTranslatorSettings();
+  // 单次请求逻辑；返回 {content,fallback}，失败抛 Error
+  async function once(){
+    if(hasLocal){
+      const settings=getTranslatorSettings();
+      let baseUrl=settings.baseUrl.replace(/\/+$/,'');
+      if(!baseUrl.endsWith('/v1'))baseUrl+='/v1';
+      const url=baseUrl+'/chat/completions';
+      const prompt='把以下文本翻译成'+target+'：\n\n'+t;
+      const res=await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
+        body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
+      });
+      if(!res.ok){
+        const errText=await res.text().catch(()=>(''));
+        const e=new Error('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200));
+        e.retryable=(res.status===502||res.status===503||res.status===504||res.status===429);
+        throw e;
+      }
+      const data=await res.json();
+      const content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+      return {content:content.trim(),fallback:false};
+    }
+    // 本地没配置：走后端 /api/translate 兜底（用服务器环境变量）
+    const res=await fetch('/api/translate',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+settings.apiKey},
-      body:JSON.stringify({model:settings.model,messages:[{role:'user',content:prompt}],stream:false})
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:t,target_lang:target})
     });
     if(!res.ok){
-      const errText=await res.text().catch(()=>(''));
-      throw new Error('AI 接口错误: '+res.status+' '+(errText||'').slice(0,200));
+      let errInfo='';
+      try{const e=await res.json();errInfo=e.error||JSON.stringify(e);}catch(_){errInfo=await res.text().catch(()=>(''))||'';}
+      if(res.status===400&&/配置/.test(errInfo)){
+        const err=new Error('服务器未预置兜底配置，请在⚙设置中填写自己的 API Key');
+        err.needSetup=true;
+        throw err;
+      }
+      const e=new Error('翻译失败: '+res.status+' '+errInfo.slice(0,200));
+      e.retryable=(res.status===502||res.status===503||res.status===504||res.status===429);
+      throw e;
     }
     const data=await res.json();
-    const content=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-    return {content:content.trim(),fallback:false};
+    const content=(data&&data.content)||'';
+    return {content:content.trim(),fallback:true};
   }
-  // 本地没配置：走后端 /api/translate 兜底（用服务器环境变量）
-  const res=await fetch('/api/translate',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({text:t,target_lang:target})
-  });
-  if(!res.ok){
-    let errInfo='';
-    try{const e=await res.json();errInfo=e.error||JSON.stringify(e);}catch(_){errInfo=await res.text().catch(()=>(''))||'';}
-    if(res.status===400&&/配置/.test(errInfo)){
-      const err=new Error('服务器未预置兜底配置，请在⚙设置中填写自己的 API Key');
-      err.needSetup=true;
-      throw err;
+  try{
+    return await once();
+  }catch(e){
+    // 非重试错误或网络错误：重试 1 次（退避 500ms）
+    const netError=e&&/Failed to fetch|NetworkError|load failed/i.test(e.message);
+    if(e.needSetup)throw e;
+    if(e.retryable||netError){
+      await new Promise(r=>setTimeout(r,500));
+      return await once();
     }
-    throw new Error('翻译失败: '+res.status+' '+errInfo.slice(0,200));
+    throw e;
   }
-  const data=await res.json();
-  const content=(data&&data.content)||'';
-  return {content:content.trim(),fallback:true};
 }
 
 async function doTranslate(){
