@@ -294,6 +294,33 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .hs-ext-links a{font-size:10px;padding:3px 9px;border-radius:12px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;text-decoration:none;font-weight:600;transition:.12s}
 .hs-ext-links a:hover{background:#16a34a;color:#fff}
 
+/* Google Trends */
+.gt-search-box{display:flex;gap:6px;margin-bottom:8px}
+.gt-search-box input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;transition:.12s}
+.gt-search-box input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.gt-search-box select{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;outline:none;cursor:pointer;background:#fff}
+.gt-search-box button{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;transition:.12s;font-weight:600}
+.gt-search-box button:hover{background:var(--primary-d)}
+.gt-search-box button:disabled{background:#94a3b8;cursor:not-allowed}
+.gt-time-filter{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;color:var(--muted)}
+.gt-time-filter select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;cursor:pointer;background:#fff}
+.gt-results{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
+.gt-empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:12px}
+.gt-loading{padding:20px 10px;text-align:center;color:var(--primary);font-size:12px}
+.gt-error{padding:12px;background:#fee2e2;color:#991b1b;border-radius:6px;font-size:11px;margin-top:8px}
+.gt-chart-container{padding:12px}
+.gt-chart-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px}
+.gt-interest-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
+.gt-interest-label{width:60px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gt-interest-bar-bg{flex:1;height:16px;background:#f1f5f9;border-radius:8px;overflow:hidden}
+.gt-interest-bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#2563eb);border-radius:8px;transition:width .3s}
+.gt-interest-value{width:30px;text-align:right;font-weight:600;color:var(--ink)}
+.gt-related-topics{padding:12px;border-top:1px solid var(--border)}
+.gt-related-title{font-size:11px;font-weight:600;color:var(--ink);margin-bottom:8px}
+.gt-related-list{display:flex;flex-wrap:wrap;gap:5px}
+.gt-related-tag{padding:3px 10px;background:var(--primary-l);color:var(--primary-d);border-radius:12px;font-size:10px;cursor:pointer;transition:.12s;border:1px solid var(--primary)}
+.gt-related-tag:hover{background:var(--primary);color:#fff}
+
 /* AI翻译器 */
 .qt-settings{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:13px;color:var(--muted);cursor:pointer;transition:.12s;white-space:nowrap;display:flex;align-items:center;gap:3px;line-height:1}
 .qt-settings:hover{background:var(--primary-l);border-color:#bfdbfe;color:var(--primary-d)}
@@ -549,6 +576,37 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
               <thead><tr><th>广告位</th><th>增加比例</th><th>实际出价</th><th>最高出价</th></tr></thead>
               <tbody id="abBody"></tbody>
             </table>
+          </div>
+
+          <!-- Google Trends -->
+          <div class="qt-card" data-id="google-trends">
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">📈</span><h3>Google Trends</h3><button class="qt-clear" onclick="clearGoogleTrends()">✕ 清除</button></div>
+            <div class="gt-search-box">
+              <input type="text" id="gtKeyword" placeholder="输入关键词，如 wireless earbuds" onkeydown="if(event.key==='Enter')searchGoogleTrends()">
+              <select id="gtMarket">
+                <option value="US" selected>🇺🇸 美国</option>
+                <option value="GB">🇬🇧 英国</option>
+                <option value="DE">🇩🇪 德国</option>
+                <option value="FR">🇫🇷 法国</option>
+                <option value="JP">🇯🇵 日本</option>
+                <option value="CA">🇨🇦 加拿大</option>
+                <option value="AU">🇦🇺 澳大利亚</option>
+                <option value="">全球</option>
+              </select>
+              <button onclick="searchGoogleTrends()">查询</button>
+            </div>
+            <div class="gt-time-filter">
+              <label>时间范围：</label>
+              <select id="gtTimeRange" onchange="searchGoogleTrends()">
+                <option value="today 12-m">过去 12 个月</option>
+                <option value="today 3-m">过去 3 个月</option>
+                <option value="today 1-m">过去 30 天</option>
+                <option value="today 7-d">过去 7 天</option>
+              </select>
+            </div>
+            <div class="gt-results" id="gtResults">
+              <div class="gt-empty">输入关键词查询 Google Trends 数据</div>
+            </div>
           </div>
 
           <!-- 快捷导航 -->
@@ -1065,6 +1123,44 @@ function clearAdBid(){
   document.getElementById('abBase').value=0;
   ['tos','ros','pp'].forEach(p=>{document.getElementById('abpct'+p).value=0;});
   document.getElementById('abBase').dispatchEvent(new Event('input'));
+}
+
+/* ===== Google Trends ===== */
+function searchGoogleTrends(){
+  const keyword=document.getElementById('gtKeyword').value.trim();
+  const market=document.getElementById('gtMarket').value;
+  const timeRange=document.getElementById('gtTimeRange').value;
+  const resultsDiv=document.getElementById('gtResults');
+
+  if(!keyword){
+    resultsDiv.innerHTML='<div class="gt-empty">请输入关键词</div>';
+    return;
+  }
+
+  resultsDiv.innerHTML='<div class="gt-loading">正在查询 Google Trends 数据...</div>';
+
+  // 使用 Google Trends 嵌入式图表
+  const geo=market||'';
+  const dateRange=timeRange;
+
+  // 构建 Google Trends embed URL
+  const embedUrl=`https://trends.google.com/trends/explore?geo=${geo}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(dateRange)}`;
+
+  // 显示嵌入式图表
+  resultsDiv.innerHTML=`
+    <div class="gt-chart-container">
+      <div class="gt-chart-title">📈 ${keyword} - Google Trends</div>
+      <iframe src="${embedUrl}&embed=1" width="100%" height="400" frameborder="0" style="border:0;border-radius:6px;"></iframe>
+      <div style="margin-top:10px;text-align:center;">
+        <a href="${embedUrl}" target="_blank" style="font-size:11px;color:var(--primary);text-decoration:none;">在新窗口中查看完整数据 →</a>
+      </div>
+    </div>
+  `;
+}
+
+function clearGoogleTrends(){
+  document.getElementById('gtKeyword').value='';
+  document.getElementById('gtResults').innerHTML='<div class="gt-empty">输入关键词查询 Google Trends 数据</div>';
 }
 
 /* ===== HS编码查询 ===== */
