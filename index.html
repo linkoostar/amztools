@@ -1294,8 +1294,43 @@ async function searchGoogleTrends(){
 
     const data = await res.json();
 
+    // 检查 API 错误
+    if (res.status === 429) {
+      resultsDiv.innerHTML = `<div class="gt-error">
+        <div style="font-weight:600;margin-bottom:6px;">⚠️ API 调用次数已用完</div>
+        <div style="font-size:11px;color:#64748b;">
+          Google Keyword API 的免费额度已耗尽。<br>
+          您可以：
+          <ul style="margin:4px 0;padding-left:20px;">
+            <li>查看下方历史记录的缓存数据</li>
+            <li>等待明天额度刷新</li>
+            <li>升级 RapidAPI 订阅计划</li>
+          </ul>
+        </div>
+      </div>`;
+      return;
+    }
+
+    if (res.status === 403) {
+      resultsDiv.innerHTML = `<div class="gt-error">
+        <div style="font-weight:600;margin-bottom:6px;">⚠️ API 访问被拒绝</div>
+        <div style="font-size:11px;color:#64748b;">
+          可能是 API Key 过期或订阅已到期。<br>
+          请检查 RapidAPI 订阅状态或联系管理员。
+        </div>
+      </div>`;
+      return;
+    }
+
     if (res.status !== 200 || data.error) {
-      resultsDiv.innerHTML=`<div class="gt-error">${data.error || '查询失败'}</div>`;
+      const errorMsg = data.error || data.message || '未知错误';
+      resultsDiv.innerHTML = `<div class="gt-error">
+        <div style="font-weight:600;margin-bottom:6px;">❌ 查询失败</div>
+        <div style="font-size:11px;color:#64748b;">${errorMsg}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:6px;">
+          如果持续失败，可能是 API 额度已用完，请稍后再试或查看历史记录。
+        </div>
+      </div>`;
       return;
     }
 
@@ -1303,7 +1338,10 @@ async function searchGoogleTrends(){
     const keywords = Array.isArray(data) ? data : (data.keywords || data.data || []);
 
     if (keywords.length === 0) {
-      resultsDiv.innerHTML='<div class="gt-empty">暂无关键词建议</div>';
+      resultsDiv.innerHTML = `<div class="gt-empty">
+        暂无关键词建议<br>
+        <span style="font-size:11px;color:#94a3b8;">可以尝试其他关键词或切换市场</span>
+      </div>`;
       return;
     }
 
@@ -1324,7 +1362,21 @@ async function searchGoogleTrends(){
     // 渲染结果
     renderGtKeywords();
   } catch (e) {
-    resultsDiv.innerHTML = `<div class="gt-error">请求失败: ${e.message}</div>`;
+    // 网络错误或其他异常
+    let errorDetail = e.message || '网络错误';
+    if (e.name === 'AbortError') {
+      errorDetail = '请求已取消';
+    } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      errorDetail = '网络连接失败，请检查网络后重试';
+    }
+
+    resultsDiv.innerHTML = `<div class="gt-error">
+      <div style="font-weight:600;margin-bottom:6px;">❌ 请求失败</div>
+      <div style="font-size:11px;color:#64748b;">${errorDetail}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px;">
+        您可以查看历史记录中的缓存数据，或稍后重试。
+      </div>
+    </div>`;
   }
 }
 
