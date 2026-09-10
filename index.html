@@ -302,8 +302,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .gt-search-box button{padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;transition:.12s;font-weight:600}
 .gt-search-box button:hover{background:var(--primary-d)}
 .gt-search-box button:disabled{background:#94a3b8;cursor:not-allowed}
-.gt-time-filter{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;color:var(--muted)}
-.gt-time-filter select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;cursor:pointer;background:#fff}
+
 .gt-results{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
 .gt-empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:12px}
 .gt-loading{padding:20px 10px;text-align:center;color:var(--primary);font-size:12px}
@@ -578,9 +577,9 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
             </table>
           </div>
 
-          <!-- Google Trends -->
+          <!-- 关键词分析 -->
           <div class="qt-card" data-id="google-trends">
-            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">📈</span><h3>Google Trends</h3><button class="qt-clear" onclick="clearGoogleTrends()">✕ 清除</button></div>
+            <div class="qt-head"><span class="drag-handle" title="拖拽排序">⋮⋮</span><span class="icon">🔍</span><h3>关键词分析</h3><button class="qt-clear" onclick="clearGoogleTrends()">✕ 清除</button></div>
             <div class="gt-search-box">
               <input type="text" id="gtKeyword" placeholder="输入关键词，如 wireless earbuds" onkeydown="if(event.key==='Enter')searchGoogleTrends()">
               <select id="gtMarket">
@@ -595,17 +594,8 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
               </select>
               <button onclick="searchGoogleTrends()">查询</button>
             </div>
-            <div class="gt-time-filter">
-              <label>时间范围：</label>
-              <select id="gtTimeRange" onchange="searchGoogleTrends()">
-                <option value="today 12-m">过去 12 个月</option>
-                <option value="today 3-m">过去 3 个月</option>
-                <option value="today 1-m">过去 30 天</option>
-                <option value="today 7-d">过去 7 天</option>
-              </select>
-            </div>
             <div class="gt-results" id="gtResults">
-              <div class="gt-empty">输入关键词查询 Google Trends 数据</div>
+              <div class="gt-empty">输入关键词查询搜索量、竞争度、竞价等数据</div>
             </div>
           </div>
 
@@ -1131,13 +1121,18 @@ async function searchGoogleTrends(){
   const market=document.getElementById('gtMarket').value;
   const resultsDiv=document.getElementById('gtResults');
 
-  resultsDiv.innerHTML='<div class="gt-loading">正在查询 Google Trends 数据...</div>';
+  if(!keyword){
+    resultsDiv.innerHTML='<div class="gt-empty">请输入关键词</div>';
+    return;
+  }
+
+  resultsDiv.innerHTML='<div class="gt-loading">正在查询关键词数据...</div>';
 
   try {
     const res = await fetch('/api/google-trends', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword, geo: market || 'US', type: 'trending' })
+      body: JSON.stringify({ keyword, geo: market || 'US', lang: 'en' })
     });
 
     const data = await res.json();
@@ -1147,38 +1142,60 @@ async function searchGoogleTrends(){
       return;
     }
 
-    // 解析 trendings 数据
-    const trends = data.trends || data.data || [];
-    const region = data.region || data.region_code || market || 'US';
+    // 解析 keywords 数据
+    const keywords = data.keywords || data.data || [];
 
-    if (trends.length === 0) {
-      resultsDiv.innerHTML='<div class="gt-empty">暂无趋势数据</div>';
+    if (keywords.length === 0) {
+      resultsDiv.innerHTML='<div class="gt-empty">暂无关键词建议</div>';
       return;
     }
 
     let html = `<div class="gt-chart-container">
-      <div class="gt-chart-title"> ${region} 热门趋势 (${trends.length} 条)</div>
-      <div style="max-height:300px;overflow-y:auto;">`;
+      <div class="gt-chart-title">"${keyword}" 相关关键词 (${keywords.length} 条)</div>
+      <div style="max-height:400px;overflow-y:auto;">`;
 
-    trends.forEach((t, i) => {
-      const title = t.title || t.keyword || t.query || '';
-      const traffic = t.approx_traffic || t.trafficStats || t.searchVolume || '';
-      const pubDate = t.pubDate || t.publishedAt || '';
-      const newsItems = t.news_items || t.articles || [];
+    keywords.forEach((k, i) => {
+      const text = k.text || k.keyword || '';
+      const volume = k.volume || k.searchVolume || 0;
+      const compLevel = (k.competition_level || k.competitionLevel || '').toUpperCase();
+      const compIndex = k.competition_index || k.competitionIndex || 0;
+      const lowBid = k.low_bid || k.lowBid || 0;
+      const highBid = k.high_bid || k.highBid || 0;
+      const trend = k.trend || 0;
 
-      html += `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      // 竞争度颜色
+      let compColor = '#94a3b8';
+      let compBg = '#f1f5f9';
+      if (compLevel === 'LOW') { compColor = '#22c55e'; compBg = '#f0fdf4'; }
+      else if (compLevel === 'MEDIUM') { compColor = '#f59e0b'; compBg = '#fffbeb'; }
+      else if (compLevel === 'HIGH') { compColor = '#ef4444'; compBg = '#fef2f2'; }
+
+      // 趋势箭头
+      let trendIcon = '';
+      if (trend > 0) trendIcon = '<span style="color:#22c55e;">↑</span>';
+      else if (trend < 0) trendIcon = '<span style="color:#ef4444;">↓</span>';
+      else trendIcon = '<span style="color:#94a3b8;">→</span>';
+
+      html += `<div style="padding:12px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:11px;color:#94a3b8;width:20px;">${i+1}</span>
-          <span style="font-size:13px;font-weight:600;color:#1e293b;flex:1;">${title}</span>
-          ${traffic ? `<span style="font-size:10px;color:#3b82f6;background:#eff6ff;padding:2px 8px;border-radius:10px;">${traffic}</span>` : ''}
+          <span style="font-size:13px;font-weight:600;color:#1e293b;flex:1;">${text}</span>
+          ${trendIcon}
         </div>
-        ${pubDate ? `<div style="font-size:10px;color:#94a3b8;margin-left:28px;">${pubDate}</div>` : ''}
-        ${newsItems.length > 0 ? `<div style="margin-left:28px;margin-top:4px;">
-          ${newsItems.slice(0, 2).map(n => `<div style="font-size:10px;color:#64748b;margin-bottom:2px;">
-            <a href="${n.url || '#'}" target="_blank" style="color:#64748b;text-decoration:none;">${n.title || ''}</a>
-            ${n.source ? `<span style="color:#94a3b8;"> - ${n.source}</span>` : ''}
-          </div>`).join('')}
-        </div>` : ''}
+        <div style="display:flex;gap:12px;margin-left:28px;flex-wrap:wrap;">
+          <div style="font-size:11px;">
+            <span style="color:#94a3b8;">搜索量:</span>
+            <span style="color:#1e293b;font-weight:600;">${volume.toLocaleString()}</span>
+          </div>
+          <div style="font-size:11px;">
+            <span style="color:#94a3b8;">竞争度:</span>
+            <span style="color:${compColor};background:${compBg};padding:2px 6px;border-radius:8px;font-weight:600;">${compLevel || '-'}</span>
+          </div>
+          <div style="font-size:11px;">
+            <span style="color:#94a3b8;">竞价:</span>
+            <span style="color:#1e293b;">$${lowBid.toFixed(2)} - $${highBid.toFixed(2)}</span>
+          </div>
+        </div>
       </div>`;
     });
 
