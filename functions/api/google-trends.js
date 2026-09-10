@@ -7,7 +7,7 @@
 
 import { jsonResponse, errorResponse } from './_utils/db.js';
 
-const RAPID_HOST = 'google-trends21.p.rapidapi.com';
+const RAPID_HOST = 'google-trends8.p.rapidapi.com';
 const RAPID_KEY = '63990e1ac4msh48fe26069047bc0p122f8djsn4293329c4054';
 
 async function callRapidAPI(path, params) {
