@@ -1129,13 +1129,7 @@ function clearAdBid(){
 async function searchGoogleTrends(){
   const keyword=document.getElementById('gtKeyword').value.trim();
   const market=document.getElementById('gtMarket').value;
-  const timeRange=document.getElementById('gtTimeRange').value;
   const resultsDiv=document.getElementById('gtResults');
-
-  if(!keyword){
-    resultsDiv.innerHTML='<div class="gt-empty">请输入关键词</div>';
-    return;
-  }
 
   resultsDiv.innerHTML='<div class="gt-loading">正在查询 Google Trends 数据...</div>';
 
@@ -1143,7 +1137,7 @@ async function searchGoogleTrends(){
     const res = await fetch('/api/google-trends', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword, geo: market, date: timeRange, type: 'explore' })
+      body: JSON.stringify({ keyword, geo: market || 'US', type: 'trending' })
     });
 
     const data = await res.json();
@@ -1153,78 +1147,43 @@ async function searchGoogleTrends(){
       return;
     }
 
-    // 解析 interestByOverTime 数据
-    const timelineData = data?.interestByOverTime?.default?.timelineData || [];
-    const relatedQueries = data?.relatedQueries?.default || {};
-    const topQueries = relatedQueries?.top || [];
-    const risingQueries = relatedQueries?.rising || [];
+    // 解析 trendings 数据
+    const trends = data.trends || data.data || [];
+    const region = data.region || data.region_code || market || 'US';
 
-    // 绘制趋势图
-    let chartHtml = '';
-    if (timelineData.length > 0) {
-      const maxVal = Math.max(...timelineData.map(d => d.value[0] || 0));
-      const labels = timelineData.map(d => d.formattedAxisTime || d.formattedTime);
-      const values = timelineData.map(d => d.value[0] || 0);
+    if (trends.length === 0) {
+      resultsDiv.innerHTML='<div class="gt-empty">暂无趋势数据</div>';
+      return;
+    }
 
-      // 生成 SVG 折线图
-      const width = 600, height = 200, padding = 30;
-      const chartW = width - padding * 2, chartH = height - padding * 2;
-      const points = values.map((v, i) => {
-        const x = padding + (i / (values.length - 1 || 1)) * chartW;
-        const y = padding + chartH - (v / (maxVal || 1)) * chartH;
-        return `${x},${y}`;
-      });
+    let html = `<div class="gt-chart-container">
+      <div class="gt-chart-title"> ${region} 热门趋势 (${trends.length} 条)</div>
+      <div style="max-height:300px;overflow-y:auto;">`;
 
-      chartHtml = `
-        <div class="gt-chart-container">
-          <div class="gt-chart-title"> ${keyword} 搜索趋势</div>
-          <svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;">
-            <!-- 网格线 -->
-            <line x1="${padding}" y1="${padding}" x2="${width-padding}" y2="${padding}" stroke="#e2e8f0" stroke-width="1"/>
-            <line x1="${padding}" y1="${padding+chartH/2}" x2="${width-padding}" y2="${padding+chartH/2}" stroke="#e2e8f0" stroke-width="1"/>
-            <line x1="${padding}" y1="${padding+chartH}" x2="${width-padding}" y2="${padding+chartH}" stroke="#e2e8f0" stroke-width="1"/>
-            <!-- 标签 -->
-            <text x="5" y="${padding+5}" font-size="10" fill="#94a3b8">${maxVal}</text>
-            <text x="5" y="${padding+chartH/2+5}" font-size="10" fill="#94a3b8">${Math.round(maxVal/2)}</text>
-            <text x="5" y="${padding+chartH+5}" font-size="10" fill="#94a3b8">0</text>
-            <!-- 折线 -->
-            <polyline points="${points.join(' ')}" fill="none" stroke="#3b82f6" stroke-width="2"/>
-            <!-- 面积 -->
-            <polygon points="${padding},${padding+chartH} ${points.join(' ')} ${width-padding},${padding+chartH}" fill="rgba(59,130,246,0.1)"/>
-            <!-- 数据点 -->
-            ${points.map(p => `<circle cx="${p.split(',')[0]}" cy="${p.split(',')[1]}" r="3" fill="#3b82f6"/>`).join('')}
-          </svg>
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;padding:0 5px;">
-            <span>${labels[0] || ''}</span>
-            <span>${labels[Math.floor(labels.length/2)] || ''}</span>
-            <span>${labels[labels.length-1] || ''}</span>
-          </div>
+    trends.forEach((t, i) => {
+      const title = t.title || t.keyword || t.query || '';
+      const traffic = t.approx_traffic || t.trafficStats || t.searchVolume || '';
+      const pubDate = t.pubDate || t.publishedAt || '';
+      const newsItems = t.news_items || t.articles || [];
+
+      html += `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:11px;color:#94a3b8;width:20px;">${i+1}</span>
+          <span style="font-size:13px;font-weight:600;color:#1e293b;flex:1;">${title}</span>
+          ${traffic ? `<span style="font-size:10px;color:#3b82f6;background:#eff6ff;padding:2px 8px;border-radius:10px;">${traffic}</span>` : ''}
         </div>
-      `;
-    }
+        ${pubDate ? `<div style="font-size:10px;color:#94a3b8;margin-left:28px;">${pubDate}</div>` : ''}
+        ${newsItems.length > 0 ? `<div style="margin-left:28px;margin-top:4px;">
+          ${newsItems.slice(0, 2).map(n => `<div style="font-size:10px;color:#64748b;margin-bottom:2px;">
+            <a href="${n.url || '#'}" target="_blank" style="color:#64748b;text-decoration:none;">${n.title || ''}</a>
+            ${n.source ? `<span style="color:#94a3b8;"> - ${n.source}</span>` : ''}
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+    });
 
-    // 相关查询
-    let relatedHtml = '';
-    if (topQueries.length > 0 || risingQueries.length > 0) {
-      relatedHtml = '<div class="gt-related-topics">';
-      if (topQueries.length > 0) {
-        relatedHtml += '<div class="gt-related-title">🔥 热门相关词</div><div class="gt-related-list">';
-        topQueries.slice(0, 10).forEach(q => {
-          relatedHtml += `<span class="gt-related-tag" onclick="document.getElementById('gtKeyword').value='${q.query.replace(/'/g, "\\'")}';searchGoogleTrends()">${q.query} (${q.formattedValue || q.value})</span>`;
-        });
-        relatedHtml += '</div>';
-      }
-      if (risingQueries.length > 0) {
-        relatedHtml += '<div class="gt-related-title" style="margin-top:12px;"> 飙升相关词</div><div class="gt-related-list">';
-        risingQueries.slice(0, 10).forEach(q => {
-          relatedHtml += `<span class="gt-related-tag" onclick="document.getElementById('gtKeyword').value='${q.query.replace(/'/g, "\\'")}';searchGoogleTrends()">${q.query} (${q.formattedValue || q.value})</span>`;
-        });
-        relatedHtml += '</div>';
-      }
-      relatedHtml += '</div>';
-    }
-
-    resultsDiv.innerHTML = chartHtml + relatedHtml;
+    html += '</div></div>';
+    resultsDiv.innerHTML = html;
   } catch (e) {
     resultsDiv.innerHTML = `<div class="gt-error">请求失败: ${e.message}</div>`;
   }

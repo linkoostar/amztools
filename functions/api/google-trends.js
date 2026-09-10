@@ -1,8 +1,8 @@
 // ============================================
 // POST /api/google-trends  —  Google Trends 数据代理
-// 使用 RapidAPI Cognify Google Trends API
+// 使用 RapidAPI google-trends8 API
 // Body: { keyword, geo, date, type }
-// type: 'explore' | 'trending' | 'compare'
+// type: 'trending' | 'explore'
 // ============================================
 
 import { jsonResponse, errorResponse } from './_utils/db.js';
@@ -19,6 +19,7 @@ async function callRapidAPI(path, params) {
 
   const res = await fetch(url, {
     headers: {
+      'Content-Type': 'application/json',
       'x-rapidapi-host': RAPID_HOST,
       'x-rapidapi-key': RAPID_KEY
     }
@@ -35,46 +36,26 @@ export async function onRequestPost(context) {
   let body;
   try { body = await context.request.json(); } catch { return errorResponse('无效的 JSON'); }
 
-  const { keyword, geo = '', date = 'today 12-m', type = 'explore' } = body;
+  const { keyword, geo = 'US', date = 'today 12-m', type = 'trending' } = body;
 
   try {
-    if (type === 'trending') {
-      // 获取当前热门趋势
-      const data = await callRapidAPI('/getTrendingNow', {
-        country: geo || 'US',
-        time: '4',
-        enableRelated: 'false',
-        enableTimeSeries: 'false',
-        tz: '480',
-        articleCount: '0'
+    if (type === 'explore' && keyword) {
+      // 查询特定关键词趋势 - 使用 trendings 端点
+      const data = await callRapidAPI('/trendings', {
+        region_code: geo,
+        hours: '24',
+        num: '20',
+        include_related_queries: 'true'
       });
       return jsonResponse(data);
     }
 
-    if (type === 'compare' && keyword && keyword.includes(',')) {
-      // 对比多个关键词
-      const keywords = keyword.split(',').map(k => k.trim()).filter(Boolean);
-      const data = await callRapidAPI('/getExploreCompareSearchTerm', {
-        keywords: keywords.join(','),
-        country: geo,
-        time: date,
-        category: '0',
-        tz: '480',
-        hl: 'zh-CN'
-      });
-      return jsonResponse(data);
-    }
-
-    // 默认：查询单个关键词趋势
-    if (!keyword) return errorResponse('缺少关键词', 400);
-    const data = await callRapidAPI('/getExploreSearchTerm', {
-      keyword,
-      country: geo,
-      time: date,
-      subRegion: 'region',
-      category: '0',
-      tz: '480',
-      hl: 'zh-CN'
+    // 默认：获取热门趋势
+    const data = await callRapidAPI('/trendings', {
+      region_code: geo,
+      hours: '24',
+      num: '20',
+      include_related_queries: 'true'
     });
     return jsonResponse(data);
   } catch (e) {
