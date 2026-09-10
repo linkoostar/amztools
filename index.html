@@ -201,6 +201,11 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
 .bw-input select{padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;color:var(--muted)}
 .bw-converted{margin-top:6px;font-size:13px;color:var(--muted);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .bw-converted b{color:var(--ink);font-weight:700;font-size:15px}
+.bw-converted-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-top:6px;font-size:12px;color:var(--muted)}
+.bw-conv-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bw-conv-item b{color:var(--ink);font-weight:700;font-size:13px}
+.bw-vol-row{display:flex;gap:20px;font-size:12px;color:var(--muted);margin-bottom:8px}
+.bw-vol-row b{color:var(--ink);font-weight:600;font-size:13px}
 .bw-results{margin-top:4px}
 .bw-result-row{display:flex;gap:8px}
 .bw-result-item{flex:1;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
@@ -489,11 +494,11 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <div class="bw-input"><label>高</label><input type="number" id="bwH" value="39" min="0" step="0.1"></div>
                 <div class="bw-input"><select id="bwDimUnit"><option value="cm" selected>CM</option><option value="in">IN</option><option value="mm">MM</option><option value="m">M</option><option value="ft">FT</option></select></div>
               </div>
-              <div class="bw-converted">
-                <span>→ <b id="bwCmL">60.0</b>×<b id="bwCmW">36.0</b>×<b id="bwCmH">39.0</b> cm</span>
-                <span>→ <b id="bwML">0.60</b>×<b id="bwMW">0.36</b>×<b id="bwMH">0.39</b> m</span>
-                <span>→ <b id="bwInL">23.6</b>×<b id="bwInW">14.2</b>×<b id="bwInH">15.4</b> in</span>
-                <span>→ <b id="bwFtL">1.97</b>×<b id="bwFtW">1.18</b>×<b id="bwFtH">1.28</b> ft</span>
+              <div class="bw-converted-grid">
+                <div class="bw-conv-item"><span>→ <b id="bwCmL">60.0</b>×<b id="bwCmW">36.0</b>×<b id="bwCmH">39.0</b> cm</span></div>
+                <div class="bw-conv-item"><span>→ <b id="bwInL">23.6</b>×<b id="bwInW">14.2</b>×<b id="bwInH">15.4</b> in</span></div>
+                <div class="bw-conv-item"><span>→ <b id="bwML">0.60</b>×<b id="bwMW">0.36</b>×<b id="bwMH">0.39</b> m</span></div>
+                <div class="bw-conv-item"><span>→ <b id="bwFtL">1.97</b>×<b id="bwFtW">1.18</b>×<b id="bwFtH">1.28</b> ft</span></div>
               </div>
             </div>
             <div class="bw-section">
@@ -502,25 +507,18 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:va
                 <div class="bw-input"><input type="number" id="bwWeight" value="3.3" min="0" step="0.01"></div>
                 <div class="bw-input"><select id="bwWtUnit"><option value="kg" selected>KG</option><option value="lb">LB</option><option value="oz">OZ</option><option value="g">G</option></select></div>
               </div>
-              <div class="bw-converted">
-                <span>→ <b id="bwKg">3.30</b> KG</span>
-                <span>→ <b id="bwLb">7.28</b> LB</span>
+              <div class="bw-converted-grid">
+                <div class="bw-conv-item"><span>→ <b id="bwKg">3.30</b> KG</span></div>
+                <div class="bw-conv-item"><span>→ <b id="bwLb">7.28</b> LB</span></div>
+                <div class="bw-conv-item"><span>→ <b id="bwG">3300</b> G</span></div>
+                <div class="bw-conv-item"><span>→ <b id="bwOz">116.4</b> OZ</span></div>
               </div>
             </div>
             <div class="bw-results">
-              <div class="bw-result-row">
-                <div class="bw-result-item">
-                  <div class="bw-result-label">体积重 ÷5000</div>
-                  <div class="bw-result-value" id="bwVol5000">16.85</div>
-                  <div class="bw-result-unit">KG</div>
-                </div>
-                <div class="bw-result-item">
-                  <div class="bw-result-label">体积重 ÷6000</div>
-                  <div class="bw-result-value" id="bwVol6000">14.04</div>
-                  <div class="bw-result-unit">KG</div>
-                </div>
+              <div class="bw-vol-row">
+                <span>体积重 ÷5000: <b id="bwVol5000">16.85</b> KG</span>
+                <span>体积重 ÷6000: <b id="bwVol6000">14.04</b> KG</span>
               </div>
-              <div style="height:8px"></div>
               <div class="bw-result-row">
                 <div class="bw-result-item highlight">
                   <div class="bw-result-label">计费重 (÷5000)</div>
@@ -960,6 +958,8 @@ function initBillingWeight(){
     // 重量换算
     document.getElementById('bwKg').textContent=kg.toFixed(2);
     document.getElementById('bwLb').textContent=(kg*2.20462).toFixed(2);
+    document.getElementById('bwG').textContent=(kg*1000).toFixed(0);
+    document.getElementById('bwOz').textContent=(kg*35.274).toFixed(1);
     document.getElementById('bwDimTag').textContent=du.value.toUpperCase();
     document.getElementById('bwWtTag').textContent=wu.value.toUpperCase();
     // 体积重
