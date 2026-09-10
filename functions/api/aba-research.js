@@ -1,6 +1,6 @@
 // ============================================
 // POST /api/aba-research  —  SellerSprite ABA 数据代理
-// 优先使用前端传入的 cookie（body.cookie），兜底用环境变量 SS_COOKIE
+// 从前端请求体读取 cookie（body.cookie），无需配置环境变量
 // 支持 KV 短缓存（5 分钟，按 cookie+查询参数 hash 区分）
 // Body: { market, q, page, size, order:[field,desc], cookie, ...其他透传字段 }
 // ============================================
@@ -62,10 +62,10 @@ export async function onRequestPost(context) {
   let body;
   try { body = await context.request.json(); } catch { return errorResponse('无效的 JSON'); }
 
-  // cookie 优先级：前端传入 > 环境变量
-  const cookie = body.cookie || env.SS_COOKIE || '';
+  // 从请求体读取 cookie（前端传入）
+  const cookie = body.cookie || '';
   if (!cookie) {
-    return errorResponse('未提供 SellerSprite cookie。请在工具设置中粘贴你的 cookie，或管理员在 Cloudflare 环境变量中配置 SS_COOKIE', 400);
+    return errorResponse('未提供 SellerSprite cookie。请在工具中点击「🔑 Cookie」按钮设置', 400);
   }
 
   // 透传所有字段，但兜底默认值
@@ -100,9 +100,8 @@ export async function onRequestPost(context) {
 export async function onRequestGet() {
   return jsonResponse({
     name: 'ABA Research 代理',
-    desc: 'POST { market, q, page, size, order }，5 分钟 KV 缓存',
-    env_required: 'SS_COOKIE',
-    env_optional: 'SS_CACHE (KV 命名空间)'
+    desc: 'POST { market, q, page, size, order, cookie }，5 分钟 KV 缓存',
+    env_optional: 'SS_CACHE (KV 命名空间，可选)'
   });
 }
 
