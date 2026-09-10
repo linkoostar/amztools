@@ -1236,13 +1236,40 @@ function renderGtHistory(){
   let html = '<span class="gt-history-label">历史:</span>';
   history.forEach((item, index) => {
     const marketLabel = item.market || 'US';
-    html += `<span class="gt-history-item" onclick="searchGtFromHistory('${item.keyword}', '${item.market}')">
-      ${item.keyword} <small>(${marketLabel})</small>
-      <span class="del" onclick="removeGtHistory(${index}, event)">×</span>
+    const safeKw = escapeHtml(item.keyword);
+    const safeKwAttr = item.keyword.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    html += `<span class="gt-history-item" data-idx="${index}">
+      ${safeKw} <small>(${marketLabel})</small>
+      <span class="del" data-del="${index}">×</span>
     </span>`;
   });
   
   container.innerHTML = html;
+  
+  // 绑定点击事件（避免特殊字符问题）
+  container.querySelectorAll('.gt-history-item').forEach(el => {
+    el.addEventListener('click', function(e){
+      if(e.target.classList.contains('del')) return;
+      const idx = parseInt(this.dataset.idx);
+      const item = history[idx];
+      if(item){
+        document.getElementById('gtKeyword').value = item.keyword;
+        document.getElementById('gtMarket').value = item.market;
+        searchGoogleTrends();
+      }
+    });
+  });
+  
+  container.querySelectorAll('.del').forEach(el => {
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      const idx = parseInt(this.dataset.del);
+      const h = getGtHistory();
+      h.splice(idx, 1);
+      localStorage.setItem(GT_HISTORY_KEY, JSON.stringify(h));
+      renderGtHistory();
+    });
+  });
 }
 
 // 从历史记录搜索
