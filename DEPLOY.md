@@ -116,6 +116,22 @@ Settings → Functions → D1 database bindings → 添加 `DB` → 选择数据
 4. 进入设置，配置 API Base URL、模型、密钥
 5. 填写产品信息，生成文案，测试流式输出
 6. 刷新页面，确认历史对话还在
+7. 进入「ABA 数据」测试（需配置 `SS_COOKIE`，见下）
+
+## 环境变量
+
+在 Cloudflare Pages → Settings → Environment variables 添加：
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `DB` | ✓ | D1 绑定（按上面步骤配） |
+| `TR_API_BASE` | 可选 | AI 翻译兜底 Base URL（如 `https://aiapi.fonken.net`） |
+| `TR_API_MODEL` | 可选 | AI 翻译兜底模型名（如 `Spark Lite`） |
+| `TR_API_KEY` | 可选 | AI 翻译兜底 API Key |
+| `SS_COOKIE` | 可选 | SellerSprite 完整 cookie 字符串（用于 ABA 数据代理）。浏览器登录 SellerSprite 后，从 DevTools 复制 `Cookie` 请求头。 |
+| `SS_CACHE` | 可选 | Cloudflare KV 命名空间 binding（启用 ABA 5 分钟缓存）。创建：`wrangler kv:namespace create SS_CACHE`，把输出 ID 填到 wrangler.toml。 |
+
+注意：环境变量修改后需重新部署才能生效。
 
 ## API 接口列表
 
@@ -130,6 +146,10 @@ Settings → Functions → D1 database bindings → 添加 `DB` → 选择数据
 | POST | `/api/conversations` | 新建对话 | ✓ |
 | DELETE | `/api/conversations/:id` | 删除对话 | ✓ |
 | POST | `/api/chat` | 发送消息（SSE流式） | ✓ |
+| POST | `/api/translate` | AI 翻译（环境变量兜底） | - |
+| POST | `/api/aba-research` | SellerSprite ABA 数据代理 | - |
+| POST | `/api/amz-suggestions` | 亚马逊下拉联想词 | - |
+| GET | `/api/prompt` | 读取系统提示词模板 | - |
 
 ## 本地开发
 

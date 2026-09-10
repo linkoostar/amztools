@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABA 数据</title>
+<style>
+:root{
+  --bg:#f5f7fa;--card:#fff;--border:#e8eaed;--primary:#3b82f6;--primary-d:#2563eb;--primary-l:#eff6ff;
+  --ink:#1e293b;--muted:#64748b;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--shadow:0 1px 2px rgba(0,0,0,.03)
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:13px;display:flex;flex-direction:column}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.topbar h1{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.topbar select,.topbar input,.topbar button{padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;color:var(--ink);background:#fff}
+.topbar input{flex:1;min-width:140px;max-width:240px}
+.topbar select:focus,.topbar input:focus{border-color:var(--primary)}
+.topbar .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);cursor:pointer;font-weight:600}
+.topbar .btn-primary:hover{background:var(--primary-d)}
+.topbar .btn-primary:disabled{background:#94a3b8;border-color:#94a3b8;cursor:wait}
+.cache-tag{font-size:10px;color:var(--muted);padding:2px 6px;background:#f1f5f9;border-radius:3px;margin-left:auto}
+
+.main{flex:1;overflow:auto;padding:12px 16px}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .icon{font-size:36px;margin-bottom:10px}
+.empty .msg{font-size:13px;line-height:1.7;max-width:480px;margin:0 auto}
+.empty code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:11px}
+
+.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:10px 14px;border-radius:6px;font-size:12px;line-height:1.6;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+.info{background:var(--primary-l);border:1px solid #bfdbfe;color:var(--primary-d);padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.6;margin:8px 0}
+
+table.aba{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px}
+table.aba th{background:#f8fafc;color:var(--muted);font-weight:600;padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;cursor:pointer;user-select:none}
+table.aba th .sort{opacity:.4;margin-left:3px;font-size:10px}
+table.aba th.active{color:var(--primary-d)}
+table.aba th.active .sort{opacity:1}
+table.aba td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+table.aba tr:last-child td{border-bottom:none}
+table.aba tr:hover td{background:#fafbfc}
+.kw{color:var(--ink);font-weight:600}
+.kw .trend{display:inline-block;width:60px;height:22px;vertical-align:middle;margin-left:6px;background:#f1f5f9;border-radius:3px;position:relative;overflow:hidden}
+.kw .trend canvas{width:60px;height:22px;display:block}
+.kw .asin-link{font-size:10px;color:var(--primary);margin-left:5px;text-decoration:none}
+.kw .sub{font-size:10px;color:var(--muted);margin-top:2px;display:block;line-height:1.4}
+.r-up{color:var(--green)}
+.r-down{color:var(--red)}
+.r-flat{color:var(--muted)}
+.cat-stats{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
+.brand-img{width:30px;height:30px;border-radius:3px;object-fit:contain;background:#f1f5f9;display:inline-block;vertical-align:middle;margin-right:3px}
+
+.load-more{text-align:center;padding:20px;color:var(--muted);font-size:12px}
+.load-more button{padding:6px 18px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;font-size:12px}
+.load-more button:hover{border-color:var(--primary);color:var(--primary)}
+.load-more button:disabled{opacity:.5;cursor:wait}
+
+.status{font-size:10px;color:var(--muted);padding:4px 16px;background:var(--card);border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📊 ABA 数据</h1>
+  <select id="marketSel">
+    <option value="COM">🇺🇸 美国站</option>
+    <option value="JP">🇯🇵 日本站</option>
+    <option value="DE">🇩🇪 德国站</option>
+    <option value="UK">🇬🇧 英国站</option>
+    <option value="FR">🇫🇷 法国站</option>
+    <option value="IT">🇮🇹 意大利站</option>
+    <option value="ES">🇪🇸 西班牙站</option>
+  </select>
+  <input type="text" id="qInput" placeholder="搜索关键词（留空 = 全部）">
+  <button id="searchBtn" class="btn-primary">查询</button>
+  <span id="cacheTag" class="cache-tag" style="display:none">缓存</span>
+</div>
+
+<div class="main" id="mainArea">
+  <div class="empty" id="emptyHint">
+    <div class="icon">🔍</div>
+    <div class="msg">输入关键词或选择站点开始查询 ABA 数据<br><br>数据来源：SellerSprite<br>查询结果会缓存 5 分钟</div>
+  </div>
+</div>
+
+<div class="status" id="statusBar">就绪</div>
+
+<script>
+const MARKET_NAME={COM:'美国',JP:'日本',DE:'德国',UK:'英国',FR:'法国',IT:'意大利',ES:'西班牙'};
+
+let currentPage=1,currentSize=50,currentOrderField='searchfrequencyrank',currentOrderDesc=false,isLoading=false,endReached=false;
+
+const $=id=>document.getElementById(id);
+
+function setStatus(msg){$('statusBar').textContent=msg;}
+
+function showEmpty(){
+  $('mainArea').innerHTML=`
+    <div class="empty">
+      <div class="icon">🔍</div>
+      <div class="msg">输入关键词或选择站点开始查询 ABA 数据<br><br>数据来源：SellerSprite<br>查询结果会缓存 5 分钟</div>
+    </div>`;
+}
+
+function showError(msg){
+  $('mainArea').innerHTML=`<div class="err">❌ ${msg}</div>`;
+}
+
+function showInfo(msg){
+  $('mainArea').innerHTML=`<div class="info">ℹ ${msg}</div>`;
+}
+
+function escapeHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function fmtNum(n){
+  if(n==null||n==='')return '-';
+  if(typeof n==='string')return n;
+  if(Math.abs(n)>=1e6)return (n/1e6).toFixed(2)+'M';
+  if(Math.abs(n)>=1e3)return (n/1e3).toFixed(2)+'K';
+  return Number.isInteger(n)?String(n):n.toFixed(2);
+}
+
+function renderTrend(canvas,data){
+  if(!data||!Array.isArray(data)||data.length<2){return;}
+  const ctx=canvas.getContext('2d');
+  const w=canvas.width=60,h=canvas.height=22;
+  const min=Math.min(...data),max=Math.max(...data);
+  const range=max-min||1;
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=i/(data.length-1)*w;
+    const y=h-(v-min)/range*h;
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  // 趋势线（橙色辅助）
+  if(data.length>=2){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=0.6;ctx.setLineDash([2,2]);ctx.beginPath();
+    ctx.moveTo(0,h-(data[0]-min)/range*h);
+    ctx.lineTo(w,h-(data[data.length-1]-min)/range*h);
+    ctx.stroke();ctx.setLineDash([]);
+  }
+}
+
+// 计算变化的颜色类
+function changeClass(v){if(v==null)return 'r-flat';if(v>0)return 'r-up';if(v<0)return 'r-down';return 'r-flat';}
+function changeIcon(v){if(v==null)return '';if(v>0)return '↑';if(v<0)return '↓';return '−';}
+
+function renderRow(item){
+  // 字段映射（容错处理）
+  const kw=item.keyword||item.word||item.name||'';
+  const asin=item.asin||item.ASIN||'';
+  const rank=item.searchfrequencyrank??item.rank;
+  const clickShare=item.clickShare??item.click_share??item.clickShareRate;
+  const clickRank=item.clickRank??item.click_rank;
+  const rankChange=item.searchResultChangeRate??item.search_change??item.searchResultChange;
+  const clickChange=item.clickChangeRate??item.click_change;
+  const ppc=item.clickPpcPrice??item.ppcPrice??item.ppc;
+  const spr=item.SPR??item.spr;
+  const titleDensity=item.titleDensity??item.density;
+  const asinClicks=item.totalClickAsinThree??item.topAsinClicks;
+  const brandClicks=item.totalClickBrandThree??item.topBrandClicks;
+  const asins=item.asins||item.topAsins||[];
+  const brands=item.brands||item.topBrands||[];
+  const trend=item.trend||item.searchTrend;
+  const cat=item.department||item.category||'';
+  const catClick=item.departmentClickShareRate||item.catClickShare;
+  const catTrans=item.departmentConversionRate||item.catConv;
+
+  // 排名变化显示
+  const upDown=item.searchfrequencyrankUptrend??item.upDown;
+
+  return `<tr>
+    <td>
+      <div class="kw">
+        ${escapeHtml(kw)}
+        ${trend&&Array.isArray(trend)?'<canvas class="trend"></canvas>':''}
+        ${asin?'<a class="asin-link" href="https://www.amazon.com/dp/'+escapeHtml(asin)+'" target="_blank" rel="noopener">ASIN</a>':''}
+      </div>
+    </td>
+    <td>${rank!=null?fmtNum(rank):'-'}</td>
+    <td>${clickShare!=null?(typeof clickShare==='number'?(clickShare*100).toFixed(2)+'%':escapeHtml(clickShare)):'-'}</td>
+    <td>${clickRank!=null?fmtNum(clickRank):'-'}</td>
+    <td class="${changeClass(rankChange)}">${rankChange!=null?(typeof rankChange==='number'?(rankChange*100).toFixed(2)+'%':escapeHtml(rankChange)):'-'}</td>
+    <td class="${changeClass(clickChange)}">${clickChange!=null?(typeof clickChange==='number'?(clickChange*100).toFixed(2)+'%':escapeHtml(clickChange)):'-'}</td>
+    <td>${ppc!=null?'$'+fmtNum(ppc):'-'}</td>
+    <td>${spr!=null?fmtNum(spr):'-'}</td>
+    <td>
+      ${titleDensity!=null?fmtNum(titleDensity):'-'}
+      ${(catClick!=null||catTrans!=null)?`<div class="cat-stats">点击占比 ${catClick!=null?(typeof catClick==='number'?(catClick*100).toFixed(2)+'%':catClick):'-'} · 转化 ${catTrans!=null?(typeof catTrans==='number'?(catTrans*100).toFixed(2)+'%':catTrans):'-'}</div>`:''}
+    </td>
+    <td>${asinClicks!=null?fmtNum(asinClicks):'-'}</td>
+    <td>
+      <div>
+        ${(brands||[]).slice(0,3).map(b=>{
+          const name=typeof b==='string'?b:(b.name||b.brand||'');
+          const logo=b&&typeof b==='object'?(b.logo||b.image||b.icon):null;
+          const rate=b&&typeof b==='object'?(b.clickRate??b.rate):null;
+          return (logo?`<img class="brand-img" src="${escapeHtml(logo)}" onerror="this.style.display='none'" alt="">`:'')+`<span>${escapeHtml(name)}</span>${rate!=null?`<div style="font-size:10px;color:${changeClass(rate)}">${(typeof rate==='number'?(rate*100).toFixed(2):rate)+'%'}</div>`:''}`;
+        }).join('<br>')}
+      </div>
+    </td>
+  </tr>`;
+}
+
+function renderTable(items,append){
+  let html=`<table class="aba">
+    <thead><tr>
+      <th data-field="keyword">关键词</th>
+      <th data-field="searchfrequencyrank" class="active">搜索排名 <span class="sort">${currentOrderField==='searchfrequencyrank'?(currentOrderDesc?'▼':'▲'):'⇅'}</span></th>
+      <th>点击份额</th>
+      <th>点击排名</th>
+      <th>搜索结果变化率</th>
+      <th>点击变化率</th>
+      <th>点击 PPC</th>
+      <th>SPR</th>
+      <th>标题密度</th>
+      <th>总点击前三 ASIN</th>
+      <th>点击前三品牌</th>
+    </tr></thead>
+    <tbody>
+    ${items.map(renderRow).join('')}
+    </tbody>
+  </table>`;
+  if(append){
+    // 追加：找到现有 tbody 追加行
+    const existing=document.querySelector('table.aba tbody');
+    if(existing){
+      existing.insertAdjacentHTML('beforeend',items.map(renderRow).join(''));
+      // 渲染新增行里的 trend canvas
+      existing.querySelectorAll('canvas.trend').forEach((c,i)=>{
+        const item=items[i];
+        const trend=item.trend||item.searchTrend;
+        if(trend&&Array.isArray(trend))renderTrend(c,trend);
+      });
+      return;
+    }
+  }
+  html=`<div style="overflow:auto;max-height:calc(100vh - 130px);border-radius:8px;">${html}</div>`;
+  $('mainArea').innerHTML=html;
+  $('mainArea').querySelectorAll('canvas.trend').forEach((c,i)=>{
+    const item=items[i];
+    const trend=item.trend||item.searchTrend;
+    if(trend&&Array.isArray(trend))renderTrend(c,trend);
+  });
+  $('mainArea').querySelectorAll('th[data-field]').forEach(th=>{
+    th.onclick=()=>{
+      const f=th.dataset.field;
+      if(currentOrderField===f){currentOrderDesc=!currentOrderDesc;}else{currentOrderField=f;currentOrderDesc=false;}
+      doSearch(true);
+    };
+  });
+  // 加载更多
+  const more=document.createElement('div');
+  more.className='load-more';
+  more.innerHTML=`<button id="loadMoreBtn">${endReached?'已加载全部':'加载更多'}</button>`;
+  $('mainArea').appendChild(more);
+  const moreBtn=$('loadMoreBtn');
+  if(moreBtn&&!endReached){
+    moreBtn.onclick=()=>{currentPage++;doSearch(false,true);};
+  }
+}
+
+async function doSearch(reset,append){
+  if(isLoading)return;
+  isLoading=true;
+  const btn=$('searchBtn');
+  if(reset){btn.disabled=true;btn.textContent='查询中...';currentPage=1;endReached=false;}
+  const market=$('marketSel').value;
+  const q=$('qInput').value.trim();
+  setStatus(`查询 ${MARKET_NAME[market]} 站，关键词：${q||'全部'}，第 ${currentPage} 页...`);
+
+  try{
+    const res=await fetch('/api/aba-research',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        market,q,
+        page:currentPage,
+        size:currentSize,
+        order:{field:currentOrderField,desc:currentOrderDesc}
+      })
+    });
+    const data=await res.json();
+    if(!res.ok){
+      if(reset)showError((data&&data.error)||('HTTP '+res.status));
+      else setStatus('加载失败: '+(data&&data.error||res.status));
+      return;
+    }
+    // 兼容多种返回结构
+    const items=data.data?.items||data.items||data.data?.list||data.list||data.data||(Array.isArray(data)?data:[]);
+    if(!Array.isArray(items)||items.length===0){
+      if(reset){showInfo(`未查询到数据${data._cache==='hit'?'（来自缓存）':''}`);}
+      else{endReached=true;const b=$('loadMoreBtn');if(b)b.textContent='已加载全部';}
+      setStatus('共 0 条');
+      return;
+    }
+    if(items.length<currentSize)endReached=true;
+    if(reset)renderTable(items,false);
+    else renderTable(items,true);
+    $('cacheTag').textContent=data._cache==='hit'?'5分钟缓存':'实时';
+    $('cacheTag').style.display='';
+    setStatus(`已加载 ${items.length} 条 ${data._cache==='hit'?'（缓存）':''} · 排序：${currentOrderField}${currentOrderDesc?'↓':'↑'}`);
+  }catch(e){
+    if(reset)showError('网络错误: '+e.message);
+    else setStatus('加载失败: '+e.message);
+  }finally{
+    isLoading=false;
+    if(reset){btn.disabled=false;btn.textContent='查询';}
+  }
+}
+
+$('searchBtn').onclick=()=>doSearch(true);
+$('qInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch(true);});
+$('marketSel').onchange=()=>{if($('qInput').value.trim())doSearch(true);};
+
+// 初次进入：显示空状态，等待用户输入或选择站点
+// doSearch(true);
+</script>
+
+</body>
+</html>
