@@ -1142,8 +1142,8 @@ async function searchGoogleTrends(){
       return;
     }
 
-    // 解析 keywords 数据
-    const keywords = data.keywords || data.data || [];
+    // 解析 keywords 数据（API 直接返回数组）
+    const keywords = Array.isArray(data) ? data : (data.keywords || data.data || []);
 
     if (keywords.length === 0) {
       resultsDiv.innerHTML='<div class="gt-empty">暂无关键词建议</div>';
