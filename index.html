@@ -1126,7 +1126,7 @@ function clearAdBid(){
 }
 
 /* ===== Google Trends ===== */
-function searchGoogleTrends(){
+async function searchGoogleTrends(){
   const keyword=document.getElementById('gtKeyword').value.trim();
   const market=document.getElementById('gtMarket').value;
   const timeRange=document.getElementById('gtTimeRange').value;
@@ -1139,23 +1139,45 @@ function searchGoogleTrends(){
 
   resultsDiv.innerHTML='<div class="gt-loading">正在查询 Google Trends 数据...</div>';
 
-  // 使用 Google Trends 嵌入式图表
-  const geo=market||'';
-  const dateRange=timeRange;
+  try {
+    const res = await fetch('/api/google-trends', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, geo: market, date: timeRange })
+    });
 
-  // 构建 Google Trends embed URL
-  const embedUrl=`https://trends.google.com/trends/explore?geo=${geo}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(dateRange)}`;
+    const data = await res.json();
+    const trendsUrl = data.url || `https://trends.google.com/trends/explore?geo=${market}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(timeRange)}`;
 
-  // 显示嵌入式图表
-  resultsDiv.innerHTML=`
-    <div class="gt-chart-container">
-      <div class="gt-chart-title">📈 ${keyword} - Google Trends</div>
-      <iframe src="${embedUrl}&embed=1" width="100%" height="400" frameborder="0" style="border:0;border-radius:6px;"></iframe>
-      <div style="margin-top:10px;text-align:center;">
-        <a href="${embedUrl}" target="_blank" style="font-size:11px;color:var(--primary);text-decoration:none;">在新窗口中查看完整数据 →</a>
+    resultsDiv.innerHTML=`
+      <div class="gt-chart-container">
+        <div class="gt-chart-title">📈 ${keyword} - Google Trends</div>
+        <div style="padding:20px;text-align:center;background:#f8fafc;border-radius:8px;margin-bottom:12px;">
+          <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Google Trends 数据已获取</p>
+          <a href="${trendsUrl}" target="_blank" style="display:inline-block;padding:8px 16px;background:#3b82f6;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">在新窗口查看趋势图 →</a>
+        </div>
+        <div style="font-size:11px;color:#64748b;text-align:center;">
+          <p>关键词: <b style="color:#1e293b;">${keyword}</b></p>
+          <p>地区: <b style="color:#1e293b;">${market || '全球'}</b> | 时间: <b style="color:#1e293b;">${timeRange}</b></p>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  } catch (e) {
+    const trendsUrl = `https://trends.google.com/trends/explore?geo=${market}&q=${encodeURIComponent(keyword)}&date=${encodeURIComponent(timeRange)}`;
+    resultsDiv.innerHTML=`
+      <div class="gt-chart-container">
+        <div class="gt-chart-title">📈 ${keyword} - Google Trends</div>
+        <div style="padding:20px;text-align:center;background:#f8fafc;border-radius:8px;margin-bottom:12px;">
+          <p style="font-size:12px;color:#64748b;margin-bottom:12px;">点击下方按钮查看趋势数据</p>
+          <a href="${trendsUrl}" target="_blank" style="display:inline-block;padding:8px 16px;background:#3b82f6;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">在新窗口查看趋势图 →</a>
+        </div>
+        <div style="font-size:11px;color:#64748b;text-align:center;">
+          <p>关键词: <b style="color:#1e293b;">${keyword}</b></p>
+          <p>地区: <b style="color:#1e293b;">${market || '全球'}</b> | 时间: <b style="color:#1e293b;">${timeRange}</b></p>
+        </div>
+      </div>
+    `;
+  }
 }
 
 function clearGoogleTrends(){
