@@ -424,11 +424,11 @@ tbody tr:hover{background:var(--hover)}
   <h2>6. 否词建议（可回查原始搜索词）</h2>
   <div class="note" style="margin-bottom:12px">
     基于<b>原始搜索词</b>的真实负指标筛选（命中任意一条判定即入列，OR 逻辑），给出可直接复制到后台做【否定投放】的候选，每个候选可回查命中的原始搜索词明细，非凭空组合。
-    <b>① 搜索词否定</b>：筛出高浪费的真实搜索词，复制后去后台新建否定（精确或词组）。<b>② 词组否定(词根级)</b>：当某个词根压着一整片高浪费搜索词时，建议把它作为词组否定一网打尽，并展示命中的真实搜索词作佐证。
+    <b>① 搜索词否定</b>：筛出高浪费的真实搜索词，复制后去后台新建否定（建议精确）。<b>② 词组否定(共性词组)</b>：从高浪费不出单的搜索词里提取共有词组（或只烧钱从不转化的单根词），推荐作为词组/精确否定一网打尽，并<b>自动排除也会出单的盈利词组</b>，避免误伤订单。
   </div>
   <div class="neg-tabs">
     <button class="neg-tab active" id="negTabSearch">① 搜索词否定建议</button>
-    <button class="neg-tab" id="negTabRoot">② 词组否定建议(词根级)</button>
+    <button class="neg-tab" id="negTabRoot">② 词组否定建议(共性词组)</button>
   </div>
   <div class="toolbar neg-params">
     <div class="np-group">
@@ -436,9 +436,9 @@ tbody tr:hover{background:var(--hover)}
       <input type="number" id="negCostThr" value="3" step="0.5" min="0" style="width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
     </div>
     <label class="neg-cond" title="花费≥阈值 且 购买量=0"><input type="checkbox" id="negCondZero" checked> 花费+零出单</label>
-    <label class="neg-cond" title="ACOS≥阈值，即使偶尔出单也亏钱"><input type="checkbox" id="negCondAcos" checked> 高ACOS≥<input type="number" id="negAcosThr" value="50" step="5" min="0" max="500" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">%</label>
-    <label class="neg-cond" title="CPC≥阈值 且 购买量=0，单次点击贵还没出单"><input type="checkbox" id="negCondCpc" checked> 高CPC≥<input type="number" id="negCpcThr" value="1" step="0.1" min="0" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">且零出单</label>
-    <label class="neg-cond" title="花费≥阈值 且 点击量很少，烧钱但流量近乎无"><input type="checkbox" id="negCondLowClick" checked> 高花费低点击&nbsp;点击&lt;<input type="number" id="negClickThr" value="5" step="1" min="1" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">次</label>
+    <label class="neg-cond" title="ACOS≥阈值，即使偶尔出单也亏钱"><input type="checkbox" id="negCondAcos"> 高ACOS≥<input type="number" id="negAcosThr" value="50" step="5" min="0" max="500" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">%</label>
+    <label class="neg-cond" title="CPC≥阈值 且 购买量=0，单次点击贵还没出单"><input type="checkbox" id="negCondCpc"> 高CPC≥<input type="number" id="negCpcThr" value="1" step="0.1" min="0" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">且零出单</label>
+    <label class="neg-cond" title="花费≥阈值 且 点击量很少，烧钱但流量近乎无"><input type="checkbox" id="negCondLowClick"> 高花费低点击&nbsp;点击&lt;<input type="number" id="negClickThr" value="5" step="1" min="1" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">次</label>
     <div class="np-group neg-root-only">
       <label class="lbl" style="margin:0">最低覆盖出问题搜索词≥</label>
       <input type="number" id="negMinHits" value="2" step="1" min="1" style="width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
@@ -1681,11 +1681,13 @@ function buildSearchNeg(){
   out.sort((a,b)=>b.m['总成本']-a.m['总成本']||b.m['ACOS']-a.m['ACOS']);
   return out;
 }
-/* 词组否定（词根级）建议 */
+/* 词组否定（共性词组/单根词）建议——好坏对照+一网打尽 */
 function buildRootNeg(){
   const p=negParams();
   const STOP=new Set(document.getElementById('stopwords').value.toLowerCase().split(/\s+/).filter(Boolean));
-  const badMap=new Map();
+  const MAXLEN=5; // 词组最多取几词
+  // 1) 按唯一搜索词聚合每行指标
+  const termMap=new Map();
   for(const row of STATE.rows){
     if(STATE.isV2 && STATE.curFilter && row.currency!==STATE.curFilter) continue;
     if(STATE.isV2 && STATE.asinFilter && row.asin!==STATE.asinFilter) continue;
@@ -1693,27 +1695,59 @@ function buildRootNeg(){
     if(!term) continue;
     const m=row.metrics;
     if(!m['总成本'] && !m['展示量']) continue;
+    let e=termMap.get(term);
+    if(!e){e={term,展示量:0,点击量:0,总成本:0,购买量:0,销售额:0,rows:[]};termMap.set(term,e);}
+    e.展示量+=m['展示量'];e.点击量+=m['点击量'];e.总成本+=m['总成本'];e.购买量+=m['购买量'];e.销售额+=m['销售额'];
+    e.rows.push(row);
+  }
+  // 2) 分好坏：购买量>0 视为出单词；否则按负指标判定为差词
+  const good=[],bad=[];
+  for(const e of termMap.values()){
+    if(e.购买量>0){good.push(e);continue;}
+    const m={'展示量':e.展示量,'点击量':e.点击量,'总成本':e.总成本,'购买量':e.购买量,'销售额':e.销售额,
+      'CPC':e.点击量>0?e.总成本/e.点击量:0,'ACOS':e.销售额>0?e.总成本/e.销售额:(e.总成本>0?999:0),'点击率':e.展示量>0?e.点击量/e.展示量:0};
     if(!evalNegCond(m,p).length) continue;
-    let b=badMap.get(term);
-    if(!b){b={term,tokens:new Set(splitTokens(term,row.source,STOP)),imp:0,cli:0,cost:0,pur:0,sales:0,rows:[]};badMap.set(term,b);}
-    b.imp+=m['展示量'];b.cli+=m['点击量'];b.cost+=m['总成本'];b.pur+=m['购买量'];b.sales+=m['销售额'];b.rows.push(row);
+    e.tokens=splitTokens(e.term,'search',STOP);
+    bad.push(e);
   }
-  const bad=[...badMap.values()].filter(b=>b.tokens.size>0);
-  const acosThr=p.acosThr;
-  const rootPool=STATE.agg.filter(r=>{
-    const cost=r['总成本']||0,pur=r['购买量']||0,acos=r['ACOS']||0;
-    if(cost<p.costThr) return false;
-    if(pur>0 && acos<acosThr) return false;
-    return true;
-  });
+  // 3) 出单词的所有 n-gram 集合，用于好坏对照排除
+  const goodKeys=new Set();
+  for(const g of good){
+    const toks=splitTokens(g.term,'search',STOP);
+    const n=Math.min(toks.length,MAXLEN);
+    for(let len=1;len<=n;len++) for(let i=0;i+len<=toks.length;i++) goodKeys.add(toks.slice(i,i+len).join(' '));
+  }
+  // 4) 从差词生成候选（>=2词的共性词组 + 单根词），按唯一差词去重并聚合指标
+  const cand=new Map();
+  function addCand(key,hit){
+    let c=cand.get(key);
+    if(!c){c={key,hits:new Set(),cost:0,pur:0,imp:0,cli:0};cand.set(key,c);}
+    if(c.hits.has(hit.term)) return;
+    c.hits.add(hit.term);c.cost+=hit.总成本;c.pur+=hit.购买量;c.imp+=hit.展示量;c.cli+=hit.点击量;
+  }
+  for(const b of bad){
+    const toks=b.tokens;
+    const n=Math.min(toks.length,MAXLEN);
+    for(let len=2;len<=n;len++) for(let i=0;i+len<=toks.length;i++) addCand(toks.slice(i,i+len).join(' '),b);
+    for(const t of toks) addCand(t,b);
+  }
+  // 5) 过滤：好坏对照排除出单词也命中的词组、低于最小覆盖条数的；聚合输出
   const out=[];
-  for(const r of rootPool){
-    const root=r['词根'];
-    const hits=bad.filter(b=>b.tokens.has(root));
-    if(hits.length<p.minHits) continue;
-    out.push({term:root,type:'root',rootCost:r['总成本']||0,rootPur:r['购买量']||0,rootAcos:r['ACOS']||0,coverCount:hits.length,coverCost:hits.reduce((s,b)=>s+b.cost,0),coverPur:hits.reduce((s,b)=>s+b.pur,0),sampleTerms:hits.slice(0,3).map(b=>b.term),allTerms:hits.map(b=>({term:b.term,scheme:b.rows[0]?.scheme,imp:b.imp,cli:b.cli,cost:b.cost,pur:b.pur,sales:b.sales}))});
+  for(const c of cand.values()){
+    if(goodKeys.has(c.key)) continue;            // 出单词也出现→盈利词，排除
+    if(c.hits.size<p.minHits) continue;
+    const isSingle=c.key.indexOf(' ')<0;
+    out.push({
+      term:c.key,type:'root',sub:isSingle?'single':'phrase',typeName:isSingle?'单根词':'共性词组',
+      coverCount:c.hits.size,coverCost:c.cost,coverPur:c.pur,coverImp:c.imp,coverCli:c.cli,
+      allTerms:[...c.hits].map(term=>{
+        const t=termMap.get(term);
+        return {term,scheme:t.rows[0]?.scheme,imp:t.展示量,cli:t.点击量,cost:t.总成本,pur:t.购买量,sales:t.销售额};
+      })
+    });
   }
-  out.sort((a,b)=>b.coverCount-a.coverCount||b.coverCost-a.coverCost);
+  out.forEach(d=>{d.sampleTerms=d.allTerms.slice(0,3);});
+  out.sort((a,b)=>b.coverCost-a.coverCost||b.coverCount-a.coverCount);
   return out;
 }
 function generateNeg(){
@@ -1738,37 +1772,35 @@ function renderNeg(data){
   const isRoot=STATE.negTab==='root';
   if(isRoot){
     thr.innerHTML='<tr>'+
-      '<th class="th-l">词组否定词</th>'+
-      '<th>覆盖出问题搜索词</th><th>佐证花费</th><th>词根购买量</th><th>词根ACOS</th>'+
-      '<th class="th-l">佐证搜索词(示例)</th><th style="width:52px">操作</th></tr>';
+      '<th class="th-l">否词(词组/单根)</th>'+
+      '<th>覆盖差词数</th><th>覆盖花费</th><th>覆盖点击</th>'+
+      '<th class="th-l">示例搜索词</th><th style="width:52px">操作</th></tr>';
     let totalCover=0,costSum=0;
     data.forEach(d=>{totalCover+=d.coverCount;costSum+=d.coverCost;});
     tb.innerHTML=data.map((d,i)=>{
-      const acosPill=d.rootAcos<=0?'pill-bad':d.rootAcos>=0.5?'pill-bad':d.rootAcos>=0.3?'pill-warn':'pill-good';
-      const sample=d.sampleTerms.map((s,j)=>esc(s)+schemeTag(d.allTerms[j]?.scheme,'')).join('<br>');
+      const typeTag=d.sub==='single'?'<span class="neg-exp" style="background:#fce7f3;color:#9d174d">单根</span>':'<span class="neg-exp">词组</span>';
+      const sample=d.allTerms.slice(0,3).map(t=>esc(t.term)+schemeTag(t.scheme,'')).join('<br>');
       const more=d.allTerms.length>3?` <a href="javascript:void(0)" onclick="openNegModal(${i})" style="color:var(--primary);font-weight:600">查看全部(${d.allTerms.length})</a>`:'';
       return `<tr>
-        <td class="tl"><b>${esc(d.term)}</b></td>
+        <td class="tl">${typeTag} <b>${esc(d.term)}</b></td>
         <td><b>${d.coverCount}</b></td>
         <td>${fmt(d.coverCost,dec)}</td>
-        <td>${fmt(d.rootPur,0)}</td>
-        <td>${STATE.colorOn?`<span class="pill ${acosPill}">${pctv(d.rootAcos)}</span>`:pctv(d.rootAcos)}</td>
+        <td>${fmt(d.coverCli,0)}</td>
         <td class="tl" style="max-width:300px;font-size:12px;line-height:1.8">${sample}${more}</td>
-        <td><button class="neg-copy" onclick="copyNegText('${negQ(d.term)}',this)" title="复制该词根用于后台词组否定">复制</button></td>
+        <td><button class="neg-copy" onclick="copyNegText('${negQ(d.term)}',this)" title="复制该否词用于后台否定投放">复制</button></td>
       </tr>`;
     }).join('');
-    info.textContent=`共 ${data.length} 个词组否定候选，合计覆盖 ${totalCover} 条出问题搜索词、佐证花费 ${fmt(costSum,dec)}`;
+    info.textContent=`共 ${data.length} 个否词候选（已排除也会出单的盈利词组），合计覆盖 ${totalCover} 条差词、浪费花费 ${fmt(costSum,dec)}`;
   }else{
     thr.innerHTML='<tr>'+
       '<th class="th-l">搜索词(去后台做否定)</th>'+
       '<th>命中判定</th><th>展示量</th><th>点击量</th><th>点击率</th><th>费用</th><th>CPC</th><th>购买量</th><th>销售额</th><th>ACOS</th>'+
-      '<th style="width:86px">否定操作</th></tr>';
+      '<th style="width:64px">操作</th></tr>';
     let costSum=0;
     data.forEach(d=>costSum+=d.m['总成本']);
     tb.innerHTML=data.map((d,i)=>{
       const reasons=d.reasons.map(r=>`<span class="neg-reason ${r.cls}">${r.l}</span>`).join('');
-      const copyExact=`<button class="neg-copy" onclick="copyNegText('${negQ(d.term)}',this)" title="复制整词，用于后台【否定投放-精确】">精确</button>`;
-      const copyPhr=`<button class="neg-copy" onclick="copyNegText('${negQ(d.term)}',this)" title="复制整词，用于后台【否定投放-词组】">词组</button>`;
+      const copyBtn=`<button class="neg-copy" onclick="copyNegText('${negQ(d.term)}',this)" title="复制整词，粘贴到后台新建【否定投放】">复制</button>`;
       return `<tr>
         <td class="tl"><b>${esc(d.term)}</b>${schemeTag(d.schemes,d.schemes)}<br><span class="muted" style="font-size:10px">${d.count}条记录 · ${d.wordCount}词 <a href="javascript:void(0)" onclick="openNegModal(${i})" style="color:var(--primary)">回查明细</a></span></td>
         <td>${reasons}</td>
@@ -1780,10 +1812,10 @@ function renderNeg(data){
         <td>${fmt(d.m['购买量'],0)}</td>
         <td>${fmt(d.m['销售额'],dec)}</td>
         <td>${d.m['ACOS']>=999?'<span style="color:var(--red);font-weight:600">∞</span>':pctv(d.m['ACOS'])}</td>
-        <td>${copyExact}${copyPhr}</td>
+        <td>${copyBtn}</td>
       </tr>`;
     }).join('');
-    info.textContent=`共 ${data.length} 条高浪费搜索词，合计花费 ${fmt(costSum,dec)}。复制后在后台【否定投放】新建，选精确或词组`;
+    info.textContent=`共 ${data.length} 条高浪费搜索词，合计花费 ${fmt(costSum,dec)}。复制后在后台新建【精确否定】`;
   }
 }
 function exportNegCsv(){
@@ -1794,8 +1826,8 @@ function exportNegCsv(){
   const pctv=(v)=>fmt(v*100,dec)+'%';
   const lines=[];
   if(isRoot){
-    lines.push(['词组否定词','覆盖出问题搜索词数','佐证花费','词根购买量','词根ACOS','佐证搜索词列表'].join(','));
-    for(const d of data) lines.push([d.term,d.coverCount,fmt(d.coverCost,dec),d.rootPur,pctv(d.rootAcos),d.allTerms.map(t=>t.term).join(';')].map(csvCell).join(','));
+    lines.push(['类型','否词','覆盖差词数','覆盖花费','覆盖点击','示例搜索词列表'].join(','));
+    for(const d of data) lines.push([d.typeName,d.term,d.coverCount,fmt(d.coverCost,dec),d.coverCli,d.allTerms.map(t=>t.term).join(';')].map(csvCell).join(','));
   }else{
     lines.push(['搜索词','命中判定','展示量','点击量','点击率','费用','CPC','购买量','销售额','ACOS','记录数','投放方案'].join(','));
     for(const d of data) lines.push([d.term,d.reasons.map(r=>r.l).join('+'),fmt(d.m['展示量'],0),fmt(d.m['点击量'],0),pctv(d.m['点击率']),fmt(d.m['总成本'],dec),fmt(d.m['CPC'],2),fmt(d.m['购买量'],0),fmt(d.m['销售额'],dec),d.m['ACOS']>=999?'∞':pctv(d.m['ACOS']),d.count,d.schemes].map(csvCell).join(','));
