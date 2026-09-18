@@ -134,7 +134,6 @@ tbody tr:hover{background:var(--hover)}
 .neg-tab{padding:6px 14px;border:1px solid var(--border);background:#fff;border-radius:7px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.12s}
 .neg-tab:hover{border-color:var(--primary);color:var(--primary-d)}
 .neg-tab.active{background:var(--primary-l);border-color:var(--primary);color:var(--primary-d)}
-.neg-params{justify-content:flex-start;gap:12px;flex-wrap:wrap;align-items:center;margin:2px 0 8px}
 .np-group{display:flex;gap:5px;align-items:center}
 .neg-cond{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink);cursor:pointer;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:#f8fafc;white-space:nowrap;transition:.12s}
 .neg-cond:hover{border-color:var(--primary)}
@@ -430,24 +429,24 @@ tbody tr:hover{background:var(--hover)}
     <button class="neg-tab active" id="negTabSearch">① 搜索词否定建议</button>
     <button class="neg-tab" id="negTabRoot">② 词组否定建议(共性词组)</button>
   </div>
-  <div class="toolbar neg-params">
-    <div class="np-group">
-      <label class="lbl" style="margin:0">最低花费≥</label>
-      <input type="number" id="negCostThr" value="3" step="0.5" min="0" style="width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
-    </div>
-    <label class="neg-cond" title="花费≥阈值 且 购买量=0"><input type="checkbox" id="negCondZero" checked> 花费+零出单</label>
-    <label class="neg-cond" title="ACOS≥阈值，即使偶尔出单也亏钱"><input type="checkbox" id="negCondAcos"> 高ACOS≥<input type="number" id="negAcosThr" value="50" step="5" min="0" max="500" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">%</label>
-    <label class="neg-cond" title="CPC≥阈值 且 购买量=0，单次点击贵还没出单"><input type="checkbox" id="negCondCpc"> 高CPC≥<input type="number" id="negCpcThr" value="1" step="0.1" min="0" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">且零出单</label>
-    <label class="neg-cond" title="花费≥阈值 且 点击量很少，烧钱但流量近乎无"><input type="checkbox" id="negCondLowClick"> 高花费低点击&nbsp;点击&lt;<input type="number" id="negClickThr" value="5" step="1" min="1" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">次</label>
-    <div class="np-group neg-root-only">
-      <label class="lbl" style="margin:0">最低覆盖出问题搜索词≥</label>
-      <input type="number" id="negMinHits" value="2" step="1" min="1" style="width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
-    </div>
-    <button class="btn btn-ghost btn-sm" id="genNeg">生成建议</button>
-    <button class="btn btn-ghost btn-sm" id="exportNegCsv">导出 CSV</button>
-  </div>
   <div class="toolbar">
     <div class="info" id="negInfo"></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="np-group">
+        <label class="lbl" style="margin:0">最低花费≥</label>
+        <input type="number" id="negCostThr" value="3" step="0.5" min="0" style="width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
+      </div>
+      <label class="neg-cond" title="花费≥阈值 且 购买量=0"><input type="checkbox" id="negCondZero" checked> 花费+零出单</label>
+      <label class="neg-cond" title="ACOS≥阈值，即使偶尔出单也亏钱"><input type="checkbox" id="negCondAcos"> 高ACOS≥<input type="number" id="negAcosThr" value="50" step="5" min="0" max="500" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">%</label>
+      <label class="neg-cond" title="CPC≥阈值 且 购买量=0，单次点击贵还没出单"><input type="checkbox" id="negCondCpc"> 高CPC≥<input type="number" id="negCpcThr" value="1" step="0.1" min="0" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">且零出单</label>
+      <label class="neg-cond" title="花费≥阈值 且 点击量很少，烧钱但流量近乎无"><input type="checkbox" id="negCondLowClick"> 高花费低点击&nbsp;点击&lt;<input type="number" id="negClickThr" value="5" step="1" min="1" style="width:48px;padding:3px 4px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center">次</label>
+      <div class="np-group neg-root-only">
+        <label class="lbl" style="margin:0">最低覆盖出问题搜索词≥</label>
+        <input type="number" id="negMinHits" value="2" step="1" min="1" style="width:58px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
+      </div>
+      <button class="btn btn-ghost btn-sm" id="genNeg">生成建议</button>
+      <button class="btn btn-ghost btn-sm" id="exportNegCsv">导出 CSV</button>
+    </div>
   </div>
   <div class="tbl-scroll" style="max-height:560px">
     <table id="negTbl">
